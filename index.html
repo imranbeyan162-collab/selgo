@@ -17,7 +17,7 @@
       overflow-x: hidden;
     }
     .mono { font-family: 'JetBrains Mono', monospace; }
-    .fade-in { animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .fade-in { animation: fadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
@@ -45,8 +45,11 @@
     .selgo-blue-btn:hover {
       background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%);
     }
+    /* Custom thin scrollbar for Gemini drawer */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
 
-    /* Mobile-only layout adjustments */
     @media (max-width: 768px) {
       #emailToast {
         left: 0.75rem !important;
@@ -55,41 +58,35 @@
         width: auto !important;
         max-width: calc(100vw - 1.5rem) !important;
       }
-      #appShell > nav {
-        height: auto !important;
-        padding: 0.65rem 0.85rem !important;
-        flex-wrap: wrap !important;
-        gap: 0.6rem !important;
-      }
-      #appShell > nav > div:first-child {
-        width: 100% !important;
-        justify-content: space-between !important;
-        flex-wrap: wrap !important;
-        gap: 0.5rem !important;
-      }
-      #appShell > nav > div:last-child {
-        width: 100% !important;
-        justify-content: space-between !important;
-        padding-top: 0.25rem !important;
-        border-top: 1px solid rgba(30, 41, 59, 0.6) !important;
-      }
-      #tabMentor, #tabMarketplace, #tabWorkspace {
-        white-space: nowrap !important;
-        font-size: 0.72rem !important;
-        padding: 0.35rem 0.65rem !important;
-      }
     }
   </style>
 
   <script>
     window.authMode = 'login';
+    window.selectedSignupRole = 'business'; // 'business' or 'developer'
     window.authToken = localStorage.getItem('selgo_auth_token') || null;
+
+    window.selectAccountRoleChoice = function(role) {
+      window.selectedSignupRole = role;
+      var bizBtn = document.getElementById('roleChoiceBusiness');
+      var devBtn = document.getElementById('roleChoiceDeveloper');
+      if (!bizBtn || !devBtn) return;
+
+      if (role === 'business') {
+        bizBtn.className = 'text-left p-3.5 rounded-xl border-2 border-blue-500 bg-blue-600/15 transition';
+        devBtn.className = 'text-left p-3.5 rounded-xl border border-slate-800 bg-slate-950/90 hover:border-slate-700 transition';
+      } else {
+        devBtn.className = 'text-left p-3.5 rounded-xl border-2 border-blue-500 bg-blue-600/15 transition';
+        bizBtn.className = 'text-left p-3.5 rounded-xl border border-slate-800 bg-slate-950/90 hover:border-slate-700 transition';
+      }
+    };
 
     window.toggleAuthMode = function(mode) {
       window.authMode = mode;
       var loginSignupBox = document.getElementById('loginSignupFormWrapper');
       var forgotBox = document.getElementById('forgotPasswordWrapper');
       var nameBox = document.getElementById('signupNameWrapper');
+      var roleBox = document.getElementById('signupRoleWrapper');
       var strengthBox = document.getElementById('passwordStrengthHint');
       var submitBtn = document.getElementById('authSubmitBtn');
       var loginTab = document.getElementById('tabLoginBtn');
@@ -111,6 +108,7 @@
 
       if (mode === 'signup') {
         if (nameBox) nameBox.classList.remove('hidden');
+        if (roleBox) roleBox.classList.remove('hidden');
         if (strengthBox) strengthBox.classList.remove('hidden');
         if (submitBtn) submitBtn.innerText = 'Create My Selgo Account';
         if (sliderPill) sliderPill.style.transform = 'translateX(100%)';
@@ -121,6 +119,7 @@
         }
       } else {
         if (nameBox) nameBox.classList.add('hidden');
+        if (roleBox) roleBox.classList.add('hidden');
         if (strengthBox) strengthBox.classList.add('hidden');
         if (submitBtn) submitBtn.innerText = 'Log In to Selgo';
         if (sliderPill) sliderPill.style.transform = 'translateX(0%)';
@@ -184,13 +183,13 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- GATE 0: OFFICIAL SELGO BRAND LOGIN / SIGNUP / PASSWORD RECOVERY       -->
+  <!-- GATE 0: OFFICIAL SELGO BRAND LOGIN / SIGNUP WITH ROLE SELECTION       -->
   <!-- ===================================================================== -->
-  <div id="authGate" class="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-12 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-950/30 via-[#050811] to-[#050811]">
+  <div id="authGate" class="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-950/30 via-[#050811] to-[#050811]">
     
-    <div class="flex flex-col items-center mb-9 select-none">
+    <div class="flex flex-col items-center mb-8 select-none">
       <div class="flex items-center gap-4">
-        <svg class="w-14 h-14 drop-shadow-[0_0_25px_rgba(0,82,255,0.4)]" viewBox="0 0 100 100" fill="none">
+        <svg class="w-13 h-13 sm:w-14 sm:h-14 drop-shadow-[0_0_25px_rgba(0,82,255,0.4)]" viewBox="0 0 100 100" fill="none">
           <defs>
             <linearGradient id="selgoTopRibbon" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stop-color="#0066FF" />
@@ -204,8 +203,8 @@
           <path d="M84 12 C52 22, 16 28, 16 48 C16 60, 34 65, 48 60 L38 52 C29 52, 28 46, 36 42 C48 36, 74 30, 84 12 Z" fill="url(#selgoTopRibbon)"/>
           <path d="M16 88 C48 78, 84 72, 84 52 C84 40, 66 35, 52 40 L62 48 C71 48, 72 54, 64 58 C52 64, 26 70, 16 88 Z" fill="url(#selgoBotRibbon)"/>
         </svg>
-        <div class="w-[1.5px] h-12 bg-gradient-to-b from-transparent via-blue-500/60 to-transparent"></div>
-        <span class="text-5xl font-extrabold tracking-tight text-white">Selgo</span>
+        <div class="w-[1.5px] h-11 bg-gradient-to-b from-transparent via-blue-500/60 to-transparent"></div>
+        <span class="text-4xl sm:text-5xl font-extrabold tracking-tight text-white">Selgo</span>
       </div>
       <div class="mt-2.5 text-xs sm:text-sm font-medium tracking-[0.22em] uppercase text-blue-400 text-center">
         AI Agents <span class="mx-1.5 text-blue-500">•</span> Automated for You
@@ -225,8 +224,32 @@
         </div>
 
         <form onsubmit="submitAuthForm(event)" class="space-y-4">
+          <!-- ROLE SELECTOR FOR SIGNUP: BUSINESS OWNER VS DEVELOPER -->
+          <div id="signupRoleWrapper" class="hidden fade-in space-y-2">
+            <label class="text-xs text-slate-300 font-semibold block">How will you use Selgo?</label>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button type="button" id="roleChoiceBusiness" onclick="selectAccountRoleChoice('business')"
+                class="text-left p-3.5 rounded-xl border-2 border-blue-500 bg-blue-600/15 transition">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xs font-bold text-white">Business Owner</span>
+                  <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-snug">Hire AI agents & track how they perform for my business.</p>
+              </button>
+
+              <button type="button" id="roleChoiceDeveloper" onclick="selectAccountRoleChoice('developer')"
+                class="text-left p-3.5 rounded-xl border border-slate-800 bg-slate-950/90 hover:border-slate-700 transition">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xs font-bold text-white">AI Developer</span>
+                  <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                </div>
+                <p class="text-[11px] text-slate-400 leading-snug">Publish AI agents, track buyers & withdraw 75% earnings.</p>
+              </button>
+            </div>
+          </div>
+
           <div id="signupNameWrapper" class="hidden fade-in">
-            <label class="text-xs text-slate-400 block mb-1.5">Full Name</label>
+            <label class="text-xs text-slate-400 block mb-1.5">Full Name or Business Name</label>
             <input id="authFullName" type="text" placeholder="e.g., Imran Mohamedbeyan"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
           </div>
@@ -295,12 +318,12 @@
 
           <div id="recoverStep2Box" class="hidden space-y-3 pt-2 border-t border-slate-800">
             <div>
-              <label class="text-xs text-slate-400 block mb-1">6-Digit Recovery Code (Sent to your Email)</label>
+              <label class="text-xs text-slate-400 block mb-1">6-Digit Recovery Code</label>
               <input id="recoverCodeInput" type="text" placeholder="123456"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm mono text-blue-400 focus:outline-none focus:border-blue-500" />
             </div>
             <div>
-              <label class="text-xs text-slate-400 block mb-1">New Strong Password (8+ chars, letters & numbers)</label>
+              <label class="text-xs text-slate-400 block mb-1">New Strong Password</label>
               <input id="recoverNewPassword" type="password" placeholder="••••••••"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
             </div>
@@ -320,6 +343,149 @@
 
     </div>
   </div>
+
+  <!-- ===================================================================== -->
+  <!-- GEMINI-STYLE SLIDE-OUT SIDEBAR DRAWER                                 -->
+  <!-- ===================================================================== -->
+  <div id="geminiDrawerBackdrop" onclick="closeSideDrawer()"
+    class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 transition-opacity"></div>
+
+  <aside id="geminiSideDrawer"
+    class="fixed top-0 left-0 bottom-0 w-[300px] max-w-[85vw] bg-[#080D1A] border-r border-slate-800/90 z-50 transform -translate-x-full transition-transform duration-200 ease-out flex flex-col justify-between select-none shadow-2xl">
+    
+    <!-- TOP HEADER + NEW CHAT BUTTON -->
+    <div class="p-4 border-b border-slate-800/80 space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <svg class="w-7 h-7" viewBox="0 0 100 100" fill="none">
+            <path d="M84 12 C52 22, 16 28, 16 48 C16 60, 34 65, 48 60 L38 52 C29 52, 28 46, 36 42 C48 36, 74 30, 84 12 Z" fill="#0066FF"/>
+            <path d="M16 88 C48 78, 84 72, 84 52 C84 40, 66 35, 52 40 L62 48 C71 48, 72 54, 64 58 C52 64, 26 70, 16 88 Z" fill="#3B82F6"/>
+          </svg>
+          <div>
+            <span class="font-extrabold text-base text-white tracking-tight">Selgo</span>
+            <span id="drawerRoleBadge" class="ml-1.5 text-[10px] uppercase tracking-wider bg-blue-500/15 border border-blue-500/30 text-blue-400 px-2 py-0.5 rounded-full font-semibold">Business</span>
+          </div>
+        </div>
+        <button type="button" onclick="closeSideDrawer()"
+          class="w-8 h-8 rounded-full hover:bg-slate-800/80 flex items-center justify-center text-slate-400 hover:text-white transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- GEMINI "+ NEW CHAT" PILL -->
+      <button type="button" onclick="startNewMentorChatSession()"
+        class="w-full selgo-blue-btn text-white font-semibold text-xs py-2.5 px-4 rounded-full flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 transition">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        <span>New Mentor Chat</span>
+      </button>
+    </div>
+
+    <!-- MIDDLE: MAIN NAVIGATION + SAVED CHAT HISTORIES -->
+    <div class="flex-1 overflow-y-auto px-3 py-3 space-y-5">
+      
+      <!-- CORE PLATFORM SECTIONS -->
+      <div class="space-y-1">
+        <div class="px-3 pb-1 text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Navigation</div>
+
+        <!-- 1. AI Business Mentor -->
+        <button type="button" id="drawerNavMentor" onclick="switchView('mentor')"
+          class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium flex items-center gap-3 bg-blue-600/15 text-blue-400 border border-blue-500/30 transition">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span>Selgo AI Mentor</span>
+        </button>
+
+        <!-- 2. Agent Market -->
+        <button type="button" id="drawerNavMarketplace" onclick="switchView('marketplace')"
+          class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium flex items-center justify-between text-slate-300 hover:bg-slate-900 hover:text-white transition">
+          <div class="flex items-center gap-3">
+            <svg class="w-4 h-4 shrink-0 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            <span>Agent Market</span>
+          </div>
+          <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full mono" id="drawerMarketCount">0</span>
+        </button>
+
+        <!-- 3. Business Owner Dashboard (Purchased Agents & Performance) -->
+        <button type="button" id="drawerNavWorkspace" onclick="switchView('workspace')"
+          class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium flex items-center justify-between text-slate-300 hover:bg-slate-900 hover:text-white transition">
+          <div class="flex items-center gap-3">
+            <svg class="w-4 h-4 shrink-0 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            <div>
+              <div class="leading-tight">Purchased Agents</div>
+              <div class="text-[10px] text-slate-500 font-normal">Business ROI & Performance</div>
+            </div>
+          </div>
+          <span class="text-[10px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded-full mono" id="navSubCount">0</span>
+        </button>
+
+        <!-- 4. Developer Studio & Earnings Dashboard -->
+        <button type="button" id="drawerNavDeveloper" onclick="switchView('developer')"
+          class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium flex items-center justify-between text-slate-300 hover:bg-slate-900 hover:text-white transition">
+          <div class="flex items-center gap-3">
+            <svg class="w-4 h-4 shrink-0 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            <div>
+              <div class="leading-tight">Developer Studio</div>
+              <div class="text-[10px] text-slate-500 font-normal">Earnings, Buyers & Post Agent</div>
+            </div>
+          </div>
+          <span class="text-[10px] bg-amber-500/15 border border-amber-500/30 text-amber-300 px-2 py-0.5 rounded-full mono" id="drawerDevEarningsBadge">$0</span>
+        </button>
+
+        <!-- 5. Account, Password & Profile Settings -->
+        <button type="button" id="drawerNavAccount" onclick="switchView('account')"
+          class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium flex items-center gap-3 text-slate-300 hover:bg-slate-900 hover:text-white transition">
+          <svg class="w-4 h-4 shrink-0 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <div>
+            <div class="leading-tight">My Account & Password</div>
+            <div class="text-[10px] text-slate-500 font-normal">Profile, role, security & log out</div>
+          </div>
+        </button>
+      </div>
+
+      <!-- SAVED CHAT HISTORIES (LIKE GEMINI) -->
+      <div class="pt-3 border-t border-slate-800/80">
+        <div class="px-3 pb-2 flex items-center justify-between">
+          <span class="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Saved Chat History</span>
+          <button type="button" onclick="clearAllSavedChatSessions()" class="text-[10px] text-slate-500 hover:text-rose-400 transition">Clear</button>
+        </div>
+        <div id="drawerChatHistoryList" class="space-y-1"></div>
+      </div>
+
+    </div>
+
+    <!-- BOTTOM USER ACCOUNT FOOTER -->
+    <div class="p-3.5 border-t border-slate-800/80 bg-slate-950/70">
+      <div class="flex items-center justify-between gap-2">
+        <button type="button" onclick="switchView('account')" class="flex items-center gap-2.5 text-left min-w-0 flex-1 group">
+          <img id="navUserAvatar" src="https://api.dicebear.com/9.x/initials/svg?seed=S&backgroundColor=0f172a" class="w-8 h-8 rounded-full object-cover border border-slate-700 shrink-0" />
+          <div class="min-w-0">
+            <div id="navProfileLabel" class="text-xs font-semibold text-white truncate group-hover:text-blue-400 transition">Account</div>
+            <div id="navUserEmailLabel" class="text-[10px] text-slate-500 truncate">Manage account & password</div>
+          </div>
+        </button>
+        <button type="button" onclick="logoutAccount()" title="Log Out"
+          class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-rose-500/15 border border-slate-800 hover:border-rose-500/30 text-[11px] text-slate-400 hover:text-rose-300 shrink-0 transition">
+          Log out
+        </button>
+      </div>
+    </div>
+  </aside>
 
   <!-- ===================================================================== -->
   <!-- LIVE VOICE CALL OVERLAY                                               -->
@@ -487,62 +653,70 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- MAIN APP SHELL                                                        -->
+  <!-- MAIN APP SHELL WITH GEMINI TWO-LINE MENU                              -->
   <!-- ===================================================================== -->
   <div id="appShell" class="hidden min-h-screen flex flex-col">
 
-    <!-- TOP NAVIGATION BAR -->
-    <nav class="h-16 border-b border-slate-800/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 bg-[#050811]/95 backdrop-blur-md z-40">
-      <div class="flex items-center gap-4 sm:gap-7">
-        <button type="button" onclick="switchView('mentor')" class="flex items-center gap-2.5 sm:gap-3 group shrink-0">
-          <svg class="w-7 h-7 sm:w-8 sm:h-8" viewBox="0 0 100 100" fill="none">
+    <!-- CLEAN GEMINI-STYLE TOP HEADER BAR -->
+    <nav class="h-14 border-b border-slate-800/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 bg-[#050811]/95 backdrop-blur-md z-40">
+      <div class="flex items-center gap-3">
+        <!-- TWO-LINE GEMINI MENU BUTTON -->
+        <button type="button" onclick="openSideDrawer()" title="Open Menu & Chat History"
+          class="w-10 h-10 rounded-full hover:bg-slate-900 border border-slate-800/90 flex flex-col items-center justify-center gap-1.5 text-slate-200 hover:text-white transition">
+          <span class="w-4 h-[2px] bg-current rounded-full"></span>
+          <span class="w-4 h-[2px] bg-current rounded-full"></span>
+        </button>
+
+        <button type="button" onclick="switchView('mentor')" class="flex items-center gap-2.5 text-left">
+          <svg class="w-7 h-7" viewBox="0 0 100 100" fill="none">
             <path d="M84 12 C52 22, 16 28, 16 48 C16 60, 34 65, 48 60 L38 52 C29 52, 28 46, 36 42 C48 36, 74 30, 84 12 Z" fill="#0066FF"/>
             <path d="M16 88 C48 78, 84 72, 84 52 C84 40, 66 35, 52 40 L62 48 C71 48, 72 54, 64 58 C52 64, 26 70, 16 88 Z" fill="#1D4ED8"/>
           </svg>
-          <div class="h-6 w-[1px] bg-slate-800"></div>
-          <div class="text-left">
-            <div class="font-extrabold tracking-tight text-base sm:text-lg text-white leading-none">Selgo</div>
-            <div class="text-[9px] tracking-[0.14em] uppercase text-blue-400 font-medium mt-0.5">AI Agents • Automated</div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-extrabold tracking-tight text-base text-white leading-none">Selgo</span>
+              <span id="topBarActiveSectionLabel" class="text-[11px] text-blue-400 font-medium">AI Mentor</span>
+            </div>
           </div>
         </button>
-
-        <div class="flex items-center gap-1 bg-slate-900 border border-slate-800 p-1 rounded-full text-xs overflow-x-auto max-w-full">
-          <button type="button" id="tabMentor" onclick="switchView('mentor')" class="px-3.5 sm:px-4 py-1.5 rounded-full bg-blue-600 text-white font-semibold transition whitespace-nowrap">
-            AI Business Mentor
-          </button>
-          <button type="button" id="tabMarketplace" onclick="switchView('marketplace')" class="px-3.5 sm:px-4 py-1.5 rounded-full text-slate-400 hover:text-white transition whitespace-nowrap">
-            Agent Marketplace
-          </button>
-          <button type="button" id="tabWorkspace" onclick="switchView('workspace')" class="hidden px-3.5 sm:px-4 py-1.5 rounded-full text-blue-400 font-semibold transition whitespace-nowrap">
-            My Business Agents (<span id="navSubCount">0</span>)
-          </button>
-        </div>
       </div>
 
-      <div class="flex items-center gap-3">
-        <button type="button" id="tabDeveloper" onclick="switchView('developer')"
-          class="text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 px-3.5 py-1.5 rounded-full flex items-center gap-2 transition whitespace-nowrap">
-          <img id="navUserAvatar" src="https://api.dicebear.com/9.x/initials/svg?seed=S&backgroundColor=0f172a" class="w-5 h-5 rounded-full object-cover" />
-          <span id="navProfileLabel">My Creator Profile</span>
+      <div class="flex items-center gap-2">
+        <!-- Quick New Chat Button -->
+        <button type="button" onclick="startNewMentorChatSession()" title="Start New Chat"
+          class="h-9 px-3 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-medium flex items-center gap-1.5 transition">
+          <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          <span class="hidden sm:inline">New Chat</span>
         </button>
-        <button type="button" onclick="logoutAccount()" class="text-xs text-slate-500 hover:text-slate-300 px-2 py-1 whitespace-nowrap">
-          Log out
+
+        <!-- Quick Agent Market Button -->
+        <button type="button" onclick="switchView('marketplace')"
+          class="h-9 px-3.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-medium flex items-center gap-1.5 transition">
+          <span>Agent Market</span>
+        </button>
+
+        <!-- Avatar Opens Account Settings -->
+        <button type="button" onclick="switchView('account')" title="Account & Settings"
+          class="w-9 h-9 rounded-full bg-slate-900 border border-slate-700/80 flex items-center justify-center overflow-hidden hover:border-blue-500 transition">
+          <img id="topBarAvatar" src="https://api.dicebear.com/9.x/initials/svg?seed=S&backgroundColor=0f172a" class="w-full h-full object-cover" />
         </button>
       </div>
     </nav>
 
     <!-- =================================================================== -->
-    <!-- VIEW 1: AI BUSINESS MENTOR                                          -->
+    <!-- VIEW 1: AI BUSINESS MENTOR (WITH AUTO-SAVED HISTORY)                -->
     <!-- =================================================================== -->
     <main id="viewMentor" class="flex-1 flex flex-col max-w-2xl w-full mx-auto px-4 sm:px-6 pt-6 sm:pt-10 pb-44">
-      <div class="flex items-center justify-between mb-8 gap-4">
+      <div class="flex items-center justify-between mb-6 gap-4">
         <div>
           <div class="text-[11px] uppercase tracking-widest text-blue-400 font-semibold mb-1">Diagnostic Intelligence</div>
           <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white">
             Selgo AI Business Mentor
           </h1>
-          <p class="text-sm text-slate-400 mt-1">
-            Type or speak in any language. Selgo understands and responds automatically.
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">
+            Type or speak in any language. Your chat history is saved automatically in the top-left menu.
           </p>
         </div>
 
@@ -559,17 +733,9 @@
         </button>
       </div>
 
-      <div id="chatStream" class="space-y-6 flex-1">
-        <div class="fade-in flex gap-3 sm:gap-4 items-start">
-          <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0 mt-0.5">S</div>
-          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl px-4 sm:px-5 py-4 text-sm text-slate-200 leading-relaxed max-w-xl">
-            Welcome to <strong>Selgo — AI Agents, Automated for You</strong>.<br><br>
-            Tell me about your business, what sector you operate in, or what daily bottleneck you want to automate in any language.
-          </div>
-        </div>
-      </div>
+      <div id="chatStream" class="space-y-6 flex-1"></div>
 
-      <div class="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-[#050811] via-[#050811]/95 to-transparent pt-6 pb-5 px-4 sm:px-6">
+      <div class="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-[#050811] via-[#050811]/95 to-transparent pt-6 pb-5 px-4 sm:px-6 z-30">
         <div class="max-w-2xl mx-auto">
           <form onsubmit="sendMentorMessage(event)"
             class="relative bg-slate-900/95 border border-slate-800/90 focus-within:border-slate-700 rounded-[28px] shadow-2xl flex items-center pl-5 sm:pl-6 pr-2.5 py-2 transition">
@@ -606,7 +772,7 @@
     </main>
 
     <!-- =================================================================== -->
-    <!-- VIEW 2: FIRST-TIME BRANCHED ONBOARDING + SOCIAL MARKETPLACE FEED    -->
+    <!-- VIEW 2: AGENT MARKETPLACE                                           -->
     <!-- =================================================================== -->
     <section id="viewMarketplace" class="hidden max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 fade-in">
 
@@ -646,7 +812,7 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-5 mb-6 gap-4">
           <div>
             <div class="flex flex-wrap items-center gap-2">
-              <span class="text-[11px] uppercase tracking-widest text-blue-400 font-semibold">Selgo Social Marketplace</span>
+              <span class="text-[11px] uppercase tracking-widest text-blue-400 font-semibold">Selgo Agent Market</span>
               <span id="activeFilterBadge" class="hidden text-[11px] bg-blue-600/20 border border-blue-500/40 text-blue-300 px-3 py-0.5 rounded-full"></span>
             </div>
             <h2 class="text-2xl font-bold tracking-tight text-white mt-1">
@@ -677,10 +843,10 @@
         <div id="marketplaceEmptyState" class="hidden bg-slate-900/40 border border-slate-800/80 rounded-2xl p-8 sm:p-12 text-center max-w-2xl mx-auto">
           <h3 class="text-lg font-semibold text-white">No Developer Agents Published Yet</h3>
           <p class="text-sm text-slate-400 mt-2 max-w-md mx-auto">
-            Open your Creator Profile to upload your photo with the camera icon and publish the first AI Agent to the feed.
+            Open your Developer Studio to upload your photo and publish the first AI Agent to the market.
           </p>
           <button type="button" onclick="switchView('developer')" class="mt-5 selgo-blue-btn text-white font-semibold text-xs px-5 py-2.5 rounded-full">
-            Open My Creator Profile
+            Open Developer Studio
           </button>
         </div>
 
@@ -689,145 +855,186 @@
     </section>
 
     <!-- =================================================================== -->
-    <!-- VIEW 3: PERSISTENT BUSINESS WORKSPACE + COMPANY KNOWLEDGE BASE      -->
+    <!-- VIEW 3: BUSINESS OWNER DASHBOARD — PURCHASED AGENTS & PERFORMANCE   -->
     <!-- =================================================================== -->
     <section id="viewWorkspace" class="hidden max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 fade-in">
-      <div class="flex items-center gap-2 overflow-x-auto pb-4 mb-6 border-b border-slate-800" id="mySubSwitcherBar"></div>
+      
+      <!-- OVERALL BUSINESS OWNER PERFORMANCE SUMMARY -->
+      <div class="mb-7">
+        <div class="text-[11px] uppercase tracking-widest text-emerald-400 font-semibold">Business Owner Dashboard</div>
+        <h2 class="text-2xl font-bold text-white mt-0.5">My Purchased Agents & Business Performance</h2>
+        <p class="text-xs text-slate-400 mt-1">Track how your subscribed AI agents are performing across your business operations.</p>
 
-      <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 mb-6 gap-4">
-        <div class="flex items-center gap-4">
-          <img id="wsDevAvatar" src="https://api.dicebear.com/9.x/shapes/svg?seed=Agent" class="w-12 h-12 rounded-2xl object-cover border border-slate-700" />
-          <div>
-            <div class="inline-flex items-center gap-2 text-[11px] text-blue-400 font-semibold">
-              <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-              DEPLOYED & ACTIVE ON SELGO CLOUD
-              <span id="wsInvoiceBadge" class="text-slate-500 mono ml-1"></span>
-            </div>
-            <h2 id="wsAgentName" class="text-xl sm:text-2xl font-bold text-white"></h2>
-            <p id="wsBusinessInfo" class="text-xs text-slate-400"></p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+          <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4">
+            <div class="text-[11px] text-slate-400">Active Purchased Agents</div>
+            <div id="bizTotalAgentsCount" class="text-2xl font-extrabold text-white mt-1 mono">0</div>
+          </div>
+          <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4">
+            <div class="text-[11px] text-slate-400">Total Tasks Automated</div>
+            <div id="bizTotalTasksCount" class="text-2xl font-extrabold text-blue-400 mt-1 mono">0</div>
+          </div>
+          <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4">
+            <div class="text-[11px] text-slate-400">Total Time Saved</div>
+            <div id="bizTotalTimeSaved" class="text-2xl font-extrabold text-emerald-400 mt-1 mono">0m</div>
+          </div>
+          <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4">
+            <div class="text-[11px] text-slate-400">Est. Business Value Created</div>
+            <div id="bizTotalValueCreated" class="text-2xl font-extrabold text-white mt-1 mono">$0</div>
           </div>
         </div>
+      </div>
 
-        <button type="button" onclick="startLiveVoiceCall('agent')"
-          class="h-10 px-4 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700/80 hover:border-blue-500/60 text-slate-100 font-medium text-xs flex items-center gap-2.5 transition group self-start md:self-auto">
-          <svg class="w-4 h-4 text-blue-400 group-hover:scale-110 transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <line x1="4" y1="10" x2="4" y2="14"/>
-            <line x1="8" y1="6" x2="8" y2="18"/>
-            <line x1="12" y1="3" x2="12" y2="21"/>
-            <line x1="16" y1="6" x2="16" y2="18"/>
-            <line x1="20" y1="10" x2="20" y2="14"/>
-          </svg>
-          <span>Live Voice Call</span>
+      <!-- EMPTY STATE WHEN BUSINESS HAS NO PURCHASED AGENTS YET -->
+      <div id="workspaceEmptyState" class="hidden bg-slate-900/50 border border-slate-800 rounded-2xl p-8 text-center">
+        <h3 class="text-base font-bold text-white">You haven't subscribed to any AI Agents yet</h3>
+        <p class="text-xs text-slate-400 mt-1.5 max-w-md mx-auto">
+          Browse the Agent Market to hire an autonomous AI agent for your business and track its live ROI and daily task performance here.
+        </p>
+        <button type="button" onclick="switchView('marketplace')" class="mt-4 selgo-blue-btn text-white font-semibold text-xs px-5 py-2.5 rounded-full">
+          Explore Agent Market
         </button>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <!-- LEFT 7 COLS: DIRECT AGENT CONVERSATION -->
-        <div class="lg:col-span-7 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-[520px] sm:h-[580px]">
-          <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between">
-            <span class="text-xs font-semibold text-slate-300">Direct Agent Conversation & Task Execution</span>
-            <span id="wsSpeed" class="text-[11px] text-slate-500 mono">Ready</span>
-          </div>
+      <!-- ACTIVE PURCHASED AGENT WORKSPACE -->
+      <div id="workspaceActiveContainer" class="hidden">
+        <div class="flex items-center gap-2 overflow-x-auto pb-4 mb-6 border-b border-slate-800" id="mySubSwitcherBar"></div>
 
-          <div id="wsChatStream" class="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4"></div>
-
-          <div class="p-3.5 border-t border-slate-800/80 bg-slate-950/60 rounded-b-2xl">
-            <form onsubmit="sendWorkspaceAgentMessage(event)"
-              class="bg-slate-900 border border-slate-800 focus-within:border-slate-700 rounded-[28px] flex items-center pl-4 sm:pl-5 pr-2 py-1.5 transition">
-              <input
-                id="wsChatInput"
-                type="text"
-                autocomplete="off"
-                placeholder="Talk to your deployed agent in any language..."
-                class="flex-1 bg-transparent text-sm text-white placeholder-slate-500 py-2 focus:outline-none"
-              />
-              <div class="flex items-center gap-1.5 shrink-0 ml-2">
-                <button type="button" id="wsMicBtn" onclick="toggleDictation('wsChatInput', 'wsMicBtn')"
-                  title="Voice input"
-                  class="w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800/70 transition">
-                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="9" y="2" width="6" height="11" rx="3"/>
-                    <path d="M5 10a7 7 0 0 0 14 0"/>
-                    <line x1="12" y1="17" x2="12" y2="21"/>
-                  </svg>
-                </button>
-
-                <button type="submit"
-                  title="Send message"
-                  class="w-10 h-10 rounded-full bg-[#93C5FD] hover:bg-[#60A5FA] text-slate-950 flex items-center justify-center transition shadow-sm">
-                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="19" x2="12" y2="5"/>
-                    <polyline points="5 12 12 5 19 12"/>
-                  </svg>
-                </button>
+        <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 mb-6 gap-4">
+          <div class="flex items-center gap-4">
+            <img id="wsDevAvatar" src="https://api.dicebear.com/9.x/shapes/svg?seed=Agent" class="w-12 h-12 rounded-2xl object-cover border border-slate-700" />
+            <div>
+              <div class="inline-flex items-center gap-2 text-[11px] text-emerald-400 font-semibold">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                PERFORMING LIVE FOR YOUR BUSINESS
+                <span id="wsInvoiceBadge" class="text-slate-500 mono ml-1"></span>
               </div>
-            </form>
+              <h2 id="wsAgentName" class="text-xl sm:text-2xl font-bold text-white"></h2>
+              <p id="wsBusinessInfo" class="text-xs text-slate-400"></p>
+            </div>
           </div>
+
+          <button type="button" onclick="startLiveVoiceCall('agent')"
+            class="h-10 px-4 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700/80 hover:border-blue-500/60 text-slate-100 font-medium text-xs flex items-center gap-2.5 transition group self-start md:self-auto">
+            <svg class="w-4 h-4 text-blue-400 group-hover:scale-110 transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="4" y1="10" x2="4" y2="14"/>
+              <line x1="8" y1="6" x2="8" y2="18"/>
+              <line x1="12" y1="3" x2="12" y2="21"/>
+              <line x1="16" y1="6" x2="16" y2="18"/>
+              <line x1="20" y1="10" x2="20" y2="14"/>
+            </svg>
+            <span>Live Voice Call</span>
+          </button>
         </div>
 
-        <!-- RIGHT 5 COLS: COMPANY KNOWLEDGE BASE SYNC + LIVE ROI METRICS -->
-        <div class="lg:col-span-5 space-y-4">
-
-          <!-- COMPANY KNOWLEDGE BASE PANEL -->
-          <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
-            <div class="flex items-center justify-between mb-2 gap-2">
-              <div>
-                <h3 class="text-xs uppercase tracking-wider text-blue-400 font-semibold">Company Knowledge Base</h3>
-                <p class="text-[11px] text-slate-400">Upload a file or paste your pricing, inventory, or SOPs.</p>
-              </div>
-              <label class="text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-full cursor-pointer flex items-center gap-1.5 transition shrink-0">
-                <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="17 8 12 3 7 8"/>
-                  <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                <span>Upload File</span>
-                <input type="file" accept=".txt,.csv,.json,.md" onchange="handleKnowledgeFileUpload(event)" class="hidden" />
-              </label>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- LEFT 7 COLS: DIRECT AGENT CONVERSATION -->
+          <div class="lg:col-span-7 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-[520px] sm:h-[580px]">
+            <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-300">Direct Agent Conversation & Task Execution</span>
+              <span id="wsSpeed" class="text-[11px] text-slate-500 mono">Ready</span>
             </div>
 
-            <textarea id="wsKnowledgeTextarea" rows="4"
-              placeholder="Paste your company prices, product catalog, schedules, or rules here so your agent knows your exact data..."
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-blue-500 mt-1"></textarea>
+            <div id="wsChatStream" class="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4"></div>
 
-            <div class="flex items-center justify-between mt-2.5">
-              <span id="wsKnowledgeStatus" class="text-[11px] text-slate-500">Synced with Agent Brain</span>
-              <button type="button" onclick="saveWorkspaceKnowledgeBase()"
-                class="selgo-blue-btn text-white font-semibold text-xs px-4 py-1.5 rounded-full transition">
-                Sync to Agent Brain
-              </button>
+            <div class="p-3.5 border-t border-slate-800/80 bg-slate-950/60 rounded-b-2xl">
+              <form onsubmit="sendWorkspaceAgentMessage(event)"
+                class="bg-slate-900 border border-slate-800 focus-within:border-slate-700 rounded-[28px] flex items-center pl-4 sm:pl-5 pr-2 py-1.5 transition">
+                <input
+                  id="wsChatInput"
+                  type="text"
+                  autocomplete="off"
+                  placeholder="Assign a task or talk to your purchased agent..."
+                  class="flex-1 bg-transparent text-sm text-white placeholder-slate-500 py-2 focus:outline-none"
+                />
+                <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                  <button type="button" id="wsMicBtn" onclick="toggleDictation('wsChatInput', 'wsMicBtn')"
+                    title="Voice input"
+                    class="w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800/70 transition">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="9" y="2" width="6" height="11" rx="3"/>
+                      <path d="M5 10a7 7 0 0 0 14 0"/>
+                      <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                  </button>
+
+                  <button type="submit"
+                    title="Send message"
+                    class="w-10 h-10 rounded-full bg-[#93C5FD] hover:bg-[#60A5FA] text-slate-950 flex items-center justify-center transition shadow-sm">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="12" y1="19" x2="12" y2="5"/>
+                      <polyline points="5 12 12 5 19 12"/>
+                    </svg>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
 
-          <!-- LIVE ROI METRICS -->
-          <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
-            <h3 class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-3">Live Business ROI Metrics</h3>
-            <div class="grid grid-cols-2 gap-3">
-              <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
-                <div class="text-[11px] text-slate-400">Tasks Automated</div>
-                <div id="wsTasksCount" class="text-xl font-bold text-white mt-0.5 mono">0</div>
+          <!-- RIGHT 5 COLS: COMPANY KNOWLEDGE BASE SYNC + LIVE ROI METRICS -->
+          <div class="lg:col-span-5 space-y-4">
+
+            <!-- COMPANY KNOWLEDGE BASE PANEL -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+              <div class="flex items-center justify-between mb-2 gap-2">
+                <div>
+                  <h3 class="text-xs uppercase tracking-wider text-blue-400 font-semibold">Company Knowledge Base</h3>
+                  <p class="text-[11px] text-slate-400">Upload a file or paste your pricing, inventory, or SOPs.</p>
+                </div>
+                <label class="text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-full cursor-pointer flex items-center gap-1.5 transition shrink-0">
+                  <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  <span>Upload File</span>
+                  <input type="file" accept=".txt,.csv,.json,.md" onchange="handleKnowledgeFileUpload(event)" class="hidden" />
+                </label>
               </div>
-              <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
-                <div class="text-[11px] text-slate-400">Time Saved</div>
-                <div id="wsTimeSaved" class="text-xl font-bold text-blue-400 mt-0.5 mono">0m</div>
+
+              <textarea id="wsKnowledgeTextarea" rows="4"
+                placeholder="Paste your company prices, product catalog, schedules, or rules here so your agent knows your exact data..."
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-blue-500 mt-1"></textarea>
+
+              <div class="flex items-center justify-between mt-2.5">
+                <span id="wsKnowledgeStatus" class="text-[11px] text-slate-500">Synced with Agent Brain</span>
+                <button type="button" onclick="saveWorkspaceKnowledgeBase()"
+                  class="selgo-blue-btn text-white font-semibold text-xs px-4 py-1.5 rounded-full transition">
+                  Sync to Agent Brain
+                </button>
               </div>
-              <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
-                <div class="text-[11px] text-slate-400">Est. Value Created</div>
-                <div id="wsValueCreated" class="text-lg font-bold text-white mt-0.5 mono">$0</div>
-              </div>
-              <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
-                <div class="text-[11px] text-slate-400">Selgo Security</div>
-                <div class="text-xs font-semibold text-blue-400 mt-1.5 flex items-center gap-1.5">
-                  <span class="w-2 h-2 rounded-full bg-blue-500"></span> SHA-256 Verified
+            </div>
+
+            <!-- THIS AGENT'S PERFORMANCE METRICS -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+              <h3 class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-3">This Agent's Performance</h3>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
+                  <div class="text-[11px] text-slate-400">Tasks Automated</div>
+                  <div id="wsTasksCount" class="text-xl font-bold text-white mt-0.5 mono">0</div>
+                </div>
+                <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
+                  <div class="text-[11px] text-slate-400">Time Saved</div>
+                  <div id="wsTimeSaved" class="text-xl font-bold text-blue-400 mt-0.5 mono">0m</div>
+                </div>
+                <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
+                  <div class="text-[11px] text-slate-400">Est. Value Created</div>
+                  <div id="wsValueCreated" class="text-lg font-bold text-white mt-0.5 mono">$0</div>
+                </div>
+                <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
+                  <div class="text-[11px] text-slate-400">Selgo Security</div>
+                  <div class="text-xs font-semibold text-emerald-400 mt-1.5 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> SHA-256 Verified
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
-            <h3 class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2.5">Latest Worker Telemetry</h3>
-            <div id="wsResultCards" class="space-y-2 text-xs text-slate-400">
-              Send a message or speak to your agent to see live execution output.
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+              <h3 class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2.5">Latest Worker Telemetry</h3>
+              <div id="wsResultCards" class="space-y-2 text-xs text-slate-400">
+                Send a message or speak to your agent to see live execution output.
+              </div>
             </div>
           </div>
         </div>
@@ -835,15 +1042,15 @@
     </section>
 
     <!-- =================================================================== -->
-    <!-- VIEW 4: SELGO CREATOR PROFILE + WALLET & PAYOUT WITHDRAWALS         -->
+    <!-- VIEW 4: AI DEVELOPER STUDIO — EARNINGS, BUYERS & PUBLISHED AGENTS   -->
     <!-- =================================================================== -->
     <section id="viewDeveloper" class="hidden max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 fade-in">
 
       <div id="devOnboardingBox" class="hidden bg-slate-900/70 border border-slate-800 rounded-2xl p-6 sm:p-8 max-w-xl mx-auto">
-        <div class="text-xs uppercase tracking-widest text-blue-400 font-semibold mb-1">One-Time Creator Setup</div>
-        <h2 class="text-2xl font-bold text-white">Set Up Your Selgo Creator Profile</h2>
+        <div class="text-xs uppercase tracking-widest text-blue-400 font-semibold mb-1">Developer Studio Setup</div>
+        <h2 class="text-2xl font-bold text-white">Set Up Your Selgo Developer Profile</h2>
         <p class="text-xs text-slate-400 mt-1 mb-6">
-          Set up your creator identity once. Every AI Agent you publish afterward automatically appears under your profile.
+          Set up your creator identity once. Every AI Agent you publish appears in the Agent Market and pays you 75% of every subscription.
         </p>
 
         <form onsubmit="saveDeveloperProfile(event)" class="space-y-5">
@@ -853,15 +1060,7 @@
                 src="https://api.dicebear.com/9.x/initials/svg?seed=Creator&backgroundColor=0f172a"
                 alt="Creator Avatar"
                 class="w-24 h-24 rounded-full object-cover border-2 border-slate-700 group-hover:border-blue-500 bg-slate-950 transition shadow-xl" />
-              
-              <div class="absolute inset-0 rounded-full bg-black/55 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
-                <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
-                  <circle cx="12" cy="13" r="3"/>
-                </svg>
-              </div>
-
-              <div class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-blue-600 border-2 border-[#050811] flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition">
+              <div class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-blue-600 border-2 border-[#050811] flex items-center justify-center text-white shadow-lg">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
                   <circle cx="12" cy="13" r="3"/>
@@ -899,17 +1098,17 @@
 
           <div>
             <label class="text-xs text-slate-400 block mb-1">Core Skills (Comma separated)</label>
-            <input id="devSkills" type="text" required placeholder="e.g., Python, Autonomous Agents, Real Estate AI, Voice Systems"
+            <input id="devSkills" type="text" required placeholder="e.g., Python, Autonomous Agents, Voice Systems"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500" />
           </div>
 
           <button type="submit" class="w-full selgo-blue-btn text-white font-semibold text-xs py-3.5 rounded-full transition">
-            Complete Profile Setup
+            Complete Developer Studio Setup
           </button>
         </form>
       </div>
 
-      <!-- PERMANENT SELGO CREATOR PROFILE PAGE -->
+      <!-- PERMANENT SELGO DEVELOPER STUDIO & EARNINGS PAGE -->
       <div id="devCreatorProfile" class="hidden space-y-8">
         <div class="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden">
           <div class="h-24 bg-gradient-to-r from-blue-900/80 via-slate-900 to-slate-950 border-b border-slate-800/80"></div>
@@ -939,23 +1138,23 @@
             <p id="liBio" class="text-xs text-slate-300 mt-5 leading-relaxed max-w-2xl"></p>
             <div id="liSkills" class="flex flex-wrap gap-1.5 mt-4"></div>
 
-            <!-- Creator Financial & Security Ledger Bar -->
+            <!-- Developer Financial & Buyer Ledger Bar -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-5 border-t border-slate-800/80">
               <div>
                 <div class="text-[11px] text-slate-400">Published Agents</div>
                 <div id="liAgentCount" class="text-lg font-bold text-white mt-0.5 mono">0</div>
               </div>
               <div>
-                <div class="text-[11px] text-slate-400">Gross Volume</div>
+                <div class="text-[11px] text-slate-400">Total Agent Sales</div>
                 <div id="liGrossSales" class="text-lg font-bold text-slate-200 mt-0.5 mono">$0.00</div>
               </div>
               <div>
-                <div class="text-[11px] text-slate-400">Available Balance (75%)</div>
-                <div id="liAvailableBalance" class="text-lg font-bold text-blue-400 mt-0.5 mono">$0.00</div>
+                <div class="text-[11px] text-slate-400">Your Earnings (75%)</div>
+                <div id="liAvailableBalance" class="text-lg font-bold text-emerald-400 mt-0.5 mono">$0.00</div>
               </div>
               <div>
                 <div class="text-[11px] text-slate-400">Security Trust Score</div>
-                <div id="liTrust" class="text-lg font-bold text-emerald-400 mt-0.5 mono">100%</div>
+                <div id="liTrust" class="text-lg font-bold text-blue-400 mt-0.5 mono">100%</div>
               </div>
             </div>
           </div>
@@ -966,7 +1165,7 @@
           <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-5">
             <div>
               <h3 class="text-base font-semibold text-white">Post a New Conversational & Task AI Agent</h3>
-              <p class="text-xs text-slate-400">Appears in the Selgo Social Marketplace under your Creator Profile.</p>
+              <p class="text-xs text-slate-400">Starts at 0 likes and appears in the Agent Market under your profile.</p>
             </div>
             <button type="button" onclick="togglePostAgentForm()" class="w-8 h-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 flex items-center justify-center">
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -992,7 +1191,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="text-xs text-slate-400 block mb-1">Target Field / Sector</label>
-                <input id="agIndustry" type="text" required placeholder="e.g., Software Engineering, Data Science, Sales, Real Estate"
+                <input id="agIndustry" type="text" required placeholder="e.g., Clinic, Software Engineering, Sales, Real Estate"
                   class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white" />
               </div>
               <div>
@@ -1037,7 +1236,7 @@
             </div>
 
             <button type="submit" class="w-full selgo-blue-btn text-white font-semibold text-xs py-3 rounded-full transition">
-              Verify Security & Publish to Social Feed
+              Verify Security & Publish to Agent Market
             </button>
           </form>
 
@@ -1045,17 +1244,22 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <!-- LEFT 7 COLS: PUBLISHED AGENTS WITH DELETE OPTION -->
+          <!-- LEFT 7 COLS: PUBLISHED AGENTS & EARNINGS PER AGENT -->
           <div class="lg:col-span-7">
-            <h3 class="text-sm font-semibold text-slate-300 mb-4">AI Agents Posted by You</h3>
+            <h3 class="text-sm font-semibold text-slate-300 mb-4">AI Agents Published by You</h3>
             <div id="liPostedAgentsFeed" class="space-y-3"></div>
           </div>
 
-          <!-- RIGHT 5 COLS: CREATOR WALLET WITHDRAWAL & SUBSCRIBER LEDGER -->
+          <!-- RIGHT 5 COLS: WHO BOUGHT YOUR AGENTS + WALLET WITHDRAWAL -->
           <div class="lg:col-span-5 space-y-6">
+            <div>
+              <h3 class="text-sm font-semibold text-slate-300 mb-3">Who Bought Your Agents (Your 75% Share)</h3>
+              <div id="liSubscriberLedger" class="space-y-2.5 text-xs text-slate-400"></div>
+            </div>
+
             <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
-              <h3 class="text-xs uppercase tracking-wider text-blue-400 font-semibold mb-1">Creator Payout Wallet</h3>
-              <p class="text-[11px] text-slate-400 mb-4">Withdraw your 75% creator share directly to your bank or mobile wallet.</p>
+              <h3 class="text-xs uppercase tracking-wider text-blue-400 font-semibold mb-1">Developer Payout Wallet</h3>
+              <p class="text-[11px] text-slate-400 mb-4">Withdraw your 75% creator earnings directly to your bank or mobile wallet.</p>
 
               <form onsubmit="submitCreatorPayout(event)" class="space-y-3">
                 <div>
@@ -1077,12 +1281,94 @@
                 </button>
               </form>
             </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
+    <!-- =================================================================== -->
+    <!-- VIEW 5: MY ACCOUNT, ROLE SWITCHER, PASSWORD CHANGE & LOG OUT        -->
+    <!-- =================================================================== -->
+    <section id="viewAccount" class="hidden max-w-2xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 fade-in space-y-6">
+      <div>
+        <div class="text-[11px] uppercase tracking-widest text-blue-400 font-semibold">Account & Security</div>
+        <h2 class="text-2xl font-bold text-white mt-0.5">About Your Account</h2>
+        <p class="text-xs text-slate-400 mt-1">Manage your identity, primary account role, password, and active session.</p>
+      </div>
+
+      <!-- PROFILE & ROLE CARD -->
+      <div class="bg-slate-900/75 border border-slate-800 rounded-2xl p-6 space-y-5">
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+          <div class="flex items-center gap-4">
+            <img id="acctPageAvatar" src="https://api.dicebear.com/9.x/initials/svg?seed=S&backgroundColor=0f172a" class="w-16 h-16 rounded-full object-cover border-2 border-slate-700" />
             <div>
-              <h3 class="text-sm font-semibold text-slate-300 mb-3">Recent Business Subscribers (75% Share)</h3>
-              <div id="liSubscriberLedger" class="space-y-2.5 text-xs text-slate-400"></div>
+              <h3 id="acctPageFullName" class="text-lg font-bold text-white"></h3>
+              <p id="acctPageEmail" class="text-xs text-slate-400 mono"></p>
+              <span id="acctPageRoleBadge" class="inline-block mt-1.5 text-[11px] bg-blue-500/15 border border-blue-500/30 text-blue-400 px-3 py-0.5 rounded-full font-semibold"></span>
             </div>
           </div>
+
+          <button type="button" onclick="logoutAccount()"
+            class="bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-semibold text-xs px-4 py-2.5 rounded-xl transition">
+            Log Out of Selgo
+          </button>
+        </div>
+
+        <!-- SWITCH ACCOUNT ROLE BETWEEN BUSINESS OWNER & AI DEVELOPER -->
+        <div class="pt-4 border-t border-slate-800/80">
+          <label class="text-xs font-semibold text-slate-300 block mb-2">Primary Account Mode</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button type="button" id="acctSwitchBizBtn" onclick="updateUserAccountRole('business')"
+              class="text-left p-4 rounded-xl border border-slate-800 bg-slate-950 hover:border-blue-500/50 transition">
+              <div class="text-xs font-bold text-white">Business Owner Mode</div>
+              <div class="text-[11px] text-slate-400 mt-1">Focuses on Purchased Agents, ROI metrics & automating company tasks.</div>
+            </button>
+
+            <button type="button" id="acctSwitchDevBtn" onclick="updateUserAccountRole('developer')"
+              class="text-left p-4 rounded-xl border border-slate-800 bg-slate-950 hover:border-blue-500/50 transition">
+              <div class="text-xs font-bold text-white">AI Developer Mode</div>
+              <div class="text-[11px] text-slate-400 mt-1">Focuses on Developer Studio, agent sales, buyer ledger & payouts.</div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHANGE PASSWORD CARD -->
+      <div class="bg-slate-900/75 border border-slate-800 rounded-2xl p-6 space-y-4">
+        <div>
+          <h3 class="text-base font-bold text-white">Change Your Password</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Request a 6-digit verification code to set a new password for your account.</p>
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-950 border border-slate-800 rounded-xl p-3.5">
+            <div class="text-xs text-slate-300">
+              Send a 6-digit security code to <strong id="acctPwEmailLabel" class="text-white mono"></strong>
+            </div>
+            <button type="button" onclick="sendInAppPasswordCode()"
+              class="selgo-blue-btn text-white font-semibold text-xs px-4 py-2 rounded-lg transition">
+              Send Verification Code
+            </button>
+          </div>
+
+          <div id="acctPwResetFields" class="hidden space-y-3 pt-2">
+            <div>
+              <label class="text-xs text-slate-400 block mb-1">6-Digit Security Code</label>
+              <input id="acctResetCodeInput" type="text" placeholder="123456"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm mono text-blue-400 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 block mb-1">New Password (8+ chars with letters & numbers)</label>
+              <input id="acctResetNewPassword" type="password" placeholder="••••••••"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+            </div>
+            <button type="button" onclick="confirmInAppPasswordChange()"
+              class="w-full selgo-blue-btn text-white font-semibold text-xs py-3 rounded-xl transition">
+              Update My Password
+            </button>
+          </div>
+
+          <div id="acctPwStatusBox" class="hidden text-xs p-3 rounded-xl"></div>
         </div>
       </div>
     </section>
@@ -1117,7 +1403,6 @@
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white" />
           </div>
 
-          <!-- Payment Method Selection -->
           <div>
             <label class="text-xs text-slate-400 block mb-1.5">Select Payment Method</label>
             <div class="grid grid-cols-3 gap-2" id="paymentMethodGroup">
@@ -1168,6 +1453,11 @@
     let history = [];
     let loadedAgentsById = {};
     let allMarketplaceAgents = [];
+    let reactionLockMap = {};
+
+    // Gemini-Style Saved Chat Sessions
+    let savedChatSessions = [];
+    let activeChatSessionId = null;
 
     let currentQuizStep = 1;
     let quizSelection = {
@@ -1339,6 +1629,216 @@
     let liveCallActive = false;
     let liveCallTarget = 'mentor';
     let liveCallRecognition = null;
+
+    // =========================================================================
+    // GEMINI SIDE DRAWER & SAVED CHAT HISTORY ENGINE
+    // =========================================================================
+    function openSideDrawer() {
+      document.getElementById('geminiDrawerBackdrop').classList.remove('hidden');
+      document.getElementById('geminiSideDrawer').classList.remove('-translate-x-full');
+      renderSavedChatHistoryDrawer();
+    }
+
+    function closeSideDrawer() {
+      document.getElementById('geminiDrawerBackdrop').classList.add('hidden');
+      document.getElementById('geminiSideDrawer').classList.add('-translate-x-full');
+    }
+
+    function getChatStorageKey() {
+      const uid = currentUser ? currentUser.email : 'guest';
+      return 'selgo_mentor_chats_' + uid;
+    }
+
+    function loadSavedChatSessions() {
+      try {
+        const raw = localStorage.getItem(getChatStorageKey());
+        savedChatSessions = raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        savedChatSessions = [];
+      }
+      if (!savedChatSessions || savedChatSessions.length === 0) {
+        createFreshMentorSession(false);
+      } else {
+        activeChatSessionId = savedChatSessions[0].id;
+        history = (savedChatSessions[0].turns || []).slice();
+        memory = Object.assign({ owner_name: currentUser ? currentUser.full_name.split(' ')[0] : null, industry: null, pain_point: null }, savedChatSessions[0].memory || {});
+        renderActiveMentorSessionMessages();
+      }
+      renderSavedChatHistoryDrawer();
+    }
+
+    function saveChatSessionsToStorage() {
+      try {
+        localStorage.setItem(getChatStorageKey(), JSON.stringify(savedChatSessions));
+      } catch (e) {}
+      renderSavedChatHistoryDrawer();
+    }
+
+    function createFreshMentorSession(switchImmediately) {
+      const newId = 'chat_' + Date.now();
+      const newSession = {
+        id: newId,
+        title: 'New Business Consultation',
+        updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        turns: [],
+        memory: { owner_name: currentUser ? currentUser.full_name.split(' ')[0] : null, industry: null, pain_point: null }
+      };
+      savedChatSessions.unshift(newSession);
+      activeChatSessionId = newId;
+      history = [];
+      memory = Object.assign({}, newSession.memory);
+      saveChatSessionsToStorage();
+      renderActiveMentorSessionMessages();
+      if (switchImmediately) {
+        switchView('mentor');
+        closeSideDrawer();
+      }
+    }
+
+    function startNewMentorChatSession() {
+      const current = savedChatSessions.find(function(s) { return s.id === activeChatSessionId; });
+      if (current && current.turns.length === 0) {
+        switchView('mentor');
+        closeSideDrawer();
+        return;
+      }
+      createFreshMentorSession(true);
+    }
+
+    function openSavedChatSession(sessionId) {
+      const target = savedChatSessions.find(function(s) { return s.id === sessionId; });
+      if (!target) return;
+      activeChatSessionId = target.id;
+      history = (target.turns || []).slice();
+      memory = Object.assign({ owner_name: currentUser ? currentUser.full_name.split(' ')[0] : null, industry: null, pain_point: null }, target.memory || {});
+      renderActiveMentorSessionMessages();
+      switchView('mentor');
+      closeSideDrawer();
+    }
+
+    function deleteSavedChatSession(sessionId, ev) {
+      if (ev) ev.stopPropagation();
+      savedChatSessions = savedChatSessions.filter(function(s) { return s.id !== sessionId; });
+      if (savedChatSessions.length === 0) {
+        createFreshMentorSession(false);
+      } else if (activeChatSessionId === sessionId) {
+        activeChatSessionId = savedChatSessions[0].id;
+        history = (savedChatSessions[0].turns || []).slice();
+        renderActiveMentorSessionMessages();
+      }
+      saveChatSessionsToStorage();
+    }
+
+    function clearAllSavedChatSessions() {
+      savedChatSessions = [];
+      createFreshMentorSession(false);
+    }
+
+    function renderActiveMentorSessionMessages() {
+      const stream = document.getElementById('chatStream');
+      if (!stream) return;
+      stream.innerHTML = `
+        <div class="fade-in flex gap-3 sm:gap-4 items-start">
+          <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0 mt-0.5">S</div>
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl px-4 sm:px-5 py-4 text-sm text-slate-200 leading-relaxed max-w-xl">
+            Welcome to <strong>Selgo — AI Agents, Automated for You</strong>.<br><br>
+            Tell me about your business, what sector you operate in, or what daily bottleneck you want to automate in any language.
+          </div>
+        </div>
+      `;
+      (history || []).forEach(function(turn) {
+        appendChatBubbleDOM(turn.role, turn.content, false);
+      });
+    }
+
+    function renderSavedChatHistoryDrawer() {
+      const list = document.getElementById('drawerChatHistoryList');
+      if (!list) return;
+      if (!savedChatSessions || savedChatSessions.length === 0) {
+        list.innerHTML = '<div class="px-3 py-2 text-[11px] text-slate-500">No saved chats yet.</div>';
+        return;
+      }
+      list.innerHTML = savedChatSessions.map(function(s) {
+        const isActive = s.id === activeChatSessionId;
+        return `
+          <div onclick="openSavedChatSession('${s.id}')"
+            class="group cursor-pointer px-3 py-2 rounded-xl text-xs flex items-center justify-between gap-2 ${isActive ? 'bg-slate-900 text-white font-semibold border border-slate-800' : 'text-slate-400 hover:bg-slate-900/60 hover:text-slate-200'} transition">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <svg class="w-3.5 h-3.5 shrink-0 ${isActive ? 'text-blue-400' : 'text-slate-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span class="truncate">${escapeHtml(s.title || 'New Chat')}</span>
+            </div>
+            <button type="button" onclick="deleteSavedChatSession('${s.id}', event)"
+              class="opacity-70 hover:opacity-100 text-slate-500 hover:text-rose-400 p-1 rounded">
+              ×
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function recordMentorTurnInSession(userText, aiReply) {
+      let current = savedChatSessions.find(function(s) { return s.id === activeChatSessionId; });
+      if (!current) {
+        createFreshMentorSession(false);
+        current = savedChatSessions[0];
+      }
+      if (current.turns.length === 0 && userText) {
+        current.title = userText.length > 34 ? userText.slice(0, 34) + '...' : userText;
+      }
+      current.turns.push({ role: 'user', content: userText });
+      current.turns.push({ role: 'assistant', content: aiReply });
+      current.memory = Object.assign({}, memory);
+      current.updatedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      saveChatSessionsToStorage();
+    }
+
+    // =========================================================================
+    // USER ROLE MANAGEMENT (BUSINESS OWNER VS DEVELOPER)
+    // =========================================================================
+    function getUserRoleKey() {
+      return 'selgo_account_role_' + (currentUser ? currentUser.email : 'default');
+    }
+
+    function getCurrentAccountRole() {
+      const saved = localStorage.getItem(getUserRoleKey());
+      if (saved === 'developer' || saved === 'business') return saved;
+      if (myDeveloperProfile && (myDeveloperProfile.agents || []).length > 0) return 'developer';
+      return 'business';
+    }
+
+    function updateUserAccountRole(role) {
+      localStorage.setItem(getUserRoleKey(), role);
+      syncAccountRoleUI();
+    }
+
+    function syncAccountRoleUI() {
+      const role = getCurrentAccountRole();
+      const roleLabel = role === 'developer' ? 'AI Developer' : 'Business Owner';
+
+      const drawerBadge = document.getElementById('drawerRoleBadge');
+      if (drawerBadge) {
+        drawerBadge.innerText = role === 'developer' ? 'Developer' : 'Business';
+        drawerBadge.className = role === 'developer'
+          ? 'ml-1.5 text-[10px] uppercase tracking-wider bg-amber-500/15 border border-amber-500/30 text-amber-300 px-2 py-0.5 rounded-full font-semibold'
+          : 'ml-1.5 text-[10px] uppercase tracking-wider bg-blue-500/15 border border-blue-500/30 text-blue-400 px-2 py-0.5 rounded-full font-semibold';
+      }
+
+      const acctBadge = document.getElementById('acctPageRoleBadge');
+      if (acctBadge) acctBadge.innerText = roleLabel + ' Account';
+
+      const bizBtn = document.getElementById('acctSwitchBizBtn');
+      const devBtn = document.getElementById('acctSwitchDevBtn');
+      if (bizBtn && devBtn) {
+        bizBtn.className = role === 'business'
+          ? 'text-left p-4 rounded-xl border-2 border-blue-500 bg-blue-600/15 transition'
+          : 'text-left p-4 rounded-xl border border-slate-800 bg-slate-950 hover:border-blue-500/50 transition';
+        devBtn.className = role === 'developer'
+          ? 'text-left p-4 rounded-xl border-2 border-blue-500 bg-blue-600/15 transition'
+          : 'text-left p-4 rounded-xl border border-slate-800 bg-slate-950 hover:border-blue-500/50 transition';
+      }
+    }
 
     function selectPaymentMethod(method, btnEl) {
       selectedPaymentMethod = method;
@@ -1580,9 +2080,10 @@
       const email = document.getElementById('authEmail').value;
       const password = document.getElementById('authPassword').value;
       const fullName = document.getElementById('authFullName').value || email.split('@')[0];
+      const isSignup = window.authMode === 'signup';
 
-      const url = window.authMode === 'signup' ? '/api/v1/auth/signup' : '/api/v1/auth/login';
-      const body = window.authMode === 'signup'
+      const url = isSignup ? '/api/v1/auth/signup' : '/api/v1/auth/login';
+      const body = isSignup
         ? { full_name: fullName, email: email, password: password }
         : { email: email, password: password };
 
@@ -1603,6 +2104,11 @@
         }
         window.authToken = data.token;
         localStorage.setItem('selgo_auth_token', window.authToken);
+
+        if (isSignup && data.user) {
+          localStorage.setItem('selgo_account_role_' + data.user.email, window.selectedSignupRole || 'business');
+        }
+
         if (data.email_notification) {
           showEmailNotificationToast(data.email_notification);
         }
@@ -1672,6 +2178,58 @@
       }
     }
 
+    // In-App Password Change from Account Page
+    async function sendInAppPasswordCode() {
+      if (!currentUser) return;
+      const statusBox = document.getElementById('acctPwStatusBox');
+      statusBox.classList.remove('hidden');
+      const res = await fetch('/api/v1/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: currentUser.email })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('acctPwResetFields').classList.remove('hidden');
+        statusBox.className = 'text-xs p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300';
+        statusBox.innerText = data.message;
+        if (data.email_notification) showEmailNotificationToast(data.email_notification);
+      } else {
+        statusBox.className = 'text-xs p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300';
+        statusBox.innerText = data.detail || 'Could not send verification code.';
+      }
+    }
+
+    async function confirmInAppPasswordChange() {
+      if (!currentUser) return;
+      const code = document.getElementById('acctResetCodeInput').value.trim();
+      const newPassword = document.getElementById('acctResetNewPassword').value;
+      const statusBox = document.getElementById('acctPwStatusBox');
+      statusBox.classList.remove('hidden');
+
+      const res = await fetch('/api/v1/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: currentUser.email,
+          recovery_code: code,
+          new_password: newPassword
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        window.authToken = data.token;
+        localStorage.setItem('selgo_auth_token', window.authToken);
+        document.getElementById('acctPwResetFields').classList.add('hidden');
+        statusBox.className = 'text-xs p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300';
+        statusBox.innerText = 'Your password has been updated.';
+        if (data.email_notification) showEmailNotificationToast(data.email_notification);
+      } else {
+        statusBox.className = 'text-xs p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300';
+        statusBox.innerText = data.detail || 'Invalid code or password format.';
+      }
+    }
+
     function enterAppWithSession(user, devProfile, subscriptions) {
       currentUser = user;
       myDeveloperProfile = devProfile;
@@ -1689,12 +2247,27 @@
       document.getElementById('devDisplayName').value = user.full_name;
       document.getElementById('devUsername').value = user.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
 
+      // Populate Account Page details
+      document.getElementById('navProfileLabel').innerText = user.full_name;
+      document.getElementById('navUserEmailLabel').innerText = user.email;
+      document.getElementById('acctPageFullName').innerText = user.full_name;
+      document.getElementById('acctPageEmail').innerText = user.email;
+      document.getElementById('acctPwEmailLabel').innerText = user.email;
+
+      const defaultAvatar = 'https://api.dicebear.com/9.x/initials/svg?seed=' + encodeURIComponent(user.full_name) + '&backgroundColor=0f172a';
+      document.getElementById('navUserAvatar').src = devProfile ? devProfile.avatar_url : defaultAvatar;
+      document.getElementById('topBarAvatar').src = devProfile ? devProfile.avatar_url : defaultAvatar;
+      document.getElementById('acctPageAvatar').src = devProfile ? devProfile.avatar_url : defaultAvatar;
+
+      syncAccountRoleUI();
+      loadSavedChatSessions();
       syncSubscriptionsNavAndWorkspace();
       syncDeveloperView();
       loadMarketplace();
     }
 
     function logoutAccount() {
+      closeSideDrawer();
       localStorage.removeItem('selgo_auth_token');
       window.authToken = null;
       currentUser = null;
@@ -1706,17 +2279,39 @@
     }
 
     function switchView(view) {
+      closeSideDrawer();
       document.getElementById('viewMentor').classList.toggle('hidden', view !== 'mentor');
       document.getElementById('viewMarketplace').classList.toggle('hidden', view !== 'marketplace');
       document.getElementById('viewWorkspace').classList.toggle('hidden', view !== 'workspace');
       document.getElementById('viewDeveloper').classList.toggle('hidden', view !== 'developer');
+      document.getElementById('viewAccount').classList.toggle('hidden', view !== 'account');
 
-      document.getElementById('tabMentor').className = view === 'mentor'
-        ? 'px-3.5 sm:px-4 py-1.5 rounded-full bg-blue-600 text-white font-semibold transition whitespace-nowrap'
-        : 'px-3.5 sm:px-4 py-1.5 rounded-full text-slate-400 hover:text-white transition whitespace-nowrap';
-      document.getElementById('tabMarketplace').className = view === 'marketplace'
-        ? 'px-3.5 sm:px-4 py-1.5 rounded-full bg-blue-600 text-white font-semibold transition whitespace-nowrap'
-        : 'px-3.5 sm:px-4 py-1.5 rounded-full text-slate-400 hover:text-white transition whitespace-nowrap';
+      const sectionNames = {
+        mentor: 'AI Mentor',
+        marketplace: 'Agent Market',
+        workspace: 'Purchased Agents & ROI',
+        developer: 'Developer Studio',
+        account: 'Account & Security'
+      };
+      document.getElementById('topBarActiveSectionLabel').innerText = sectionNames[view] || 'AI Mentor';
+
+      // Highlight active item inside Gemini side drawer
+      const navMap = {
+        mentor: 'drawerNavMentor',
+        marketplace: 'drawerNavMarketplace',
+        workspace: 'drawerNavWorkspace',
+        developer: 'drawerNavDeveloper',
+        account: 'drawerNavAccount'
+      };
+      Object.keys(navMap).forEach(function(k) {
+        const el = document.getElementById(navMap[k]);
+        if (!el) return;
+        if (k === view) {
+          el.classList.add('bg-blue-600/15', 'text-white', 'border', 'border-blue-500/30');
+        } else {
+          el.classList.remove('bg-blue-600/15', 'text-white', 'border', 'border-blue-500/30');
+        }
+      });
 
       if (view === 'marketplace') {
         if (!hasCompletedOnboarding()) {
@@ -1729,8 +2324,50 @@
         }
         loadMarketplace();
       }
+      if (view === 'workspace') syncSubscriptionsNavAndWorkspace();
       if (view === 'developer') syncDeveloperView();
+      if (view === 'account') syncAccountRoleUI();
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // =========================================================================
+    // STRICT 1-REACTION-PER-USER & ZERO-INITIAL-LIKE LEDGER
+    // =========================================================================
+    function getUserReactionLedgerKey() {
+      const uid = currentUser ? currentUser.email : 'guest';
+      return 'selgo_single_reaction_ledger_' + uid;
+    }
+
+    function getUserReactionLedger() {
+      try {
+        const raw = localStorage.getItem(getUserReactionLedgerKey());
+        return raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveUserReactionLedger(ledger) {
+      try {
+        localStorage.setItem(getUserReactionLedgerKey(), JSON.stringify(ledger));
+      } catch (e) {}
+    }
+
+    function getZeroLikeFixLedger() {
+      try {
+        const raw = localStorage.getItem('selgo_zero_like_baseline_agents');
+        return raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function markAgentZeroBaseline(agentId) {
+      try {
+        const map = getZeroLikeFixLedger();
+        map[agentId] = true;
+        localStorage.setItem('selgo_zero_like_baseline_agents', JSON.stringify(map));
+      } catch (e) {}
     }
 
     function computeAgentMatchScore(ag) {
@@ -1756,11 +2393,13 @@
       if (!res.ok) return;
       const data = await res.json();
       allMarketplaceAgents = data.agents || [];
+      const marketCountEl = document.getElementById('drawerMarketCount');
+      if (marketCountEl) marketCountEl.innerText = allMarketplaceAgents.length;
       renderSocialMarketplaceFeed();
     }
 
     // =========================================================================
-    // SOCIAL FEED RENDERER WITH VECTOR HEART, SAVE, BOOST & COMMENTS
+    // SOCIAL FEED RENDERER WITH STRICT 1-LIKE PER USER
     // =========================================================================
     function renderSocialMarketplaceFeed() {
       const grid = document.getElementById('marketplaceGrid');
@@ -1777,6 +2416,8 @@
       }
 
       empty.classList.add('hidden');
+      const reactionLedger = getUserReactionLedger();
+      const zeroBaselineMap = getZeroLikeFixLedger();
 
       let filtered = allMarketplaceAgents.filter(function(ag) {
         if (!query) return true;
@@ -1796,17 +2437,45 @@
       });
 
       scoredAgents.forEach(function(ag) {
+        const userRec = reactionLedger[ag.agent_id] || {
+          like: Boolean(ag.user_liked),
+          fire: false,
+          rocket: false
+        };
+
+        // Ensure newly published agents start at 0 likes unless a user explicitly liked them
+        let displayLikes = Math.max(0, ag.likes_count || 0);
+        if (zeroBaselineMap[ag.agent_id] && !userRec.like && displayLikes === 1) {
+          displayLikes = 0;
+        }
+        if (userRec.like && displayLikes === 0) {
+          displayLikes = 1;
+        }
+
+        const displayFire = userRec.fire ? Math.max(1, Math.min(1, ag.fire_count || 1)) : 0;
+        const displayRocket = userRec.rocket ? Math.max(1, Math.min(1, ag.rocket_count || 1)) : 0;
+
+        ag._displayLikes = displayLikes;
+        ag._displayFire = displayFire;
+        ag._displayRocket = displayRocket;
         loadedAgentsById[ag.agent_id] = ag;
+
         const matchPill = ag.matchScore ? `
           <span class="text-[11px] font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 px-3 py-1 rounded-full">
             ${ag.matchScore}% Match
           </span>
         ` : '';
 
-        const isLiked = Boolean(ag.user_liked);
+        const isLiked = Boolean(userRec.like);
         const heartFill = isLiked ? '#FE2C55' : 'none';
         const heartStroke = isLiked ? '#FE2C55' : 'currentColor';
         const heartTextClass = isLiked ? 'text-[#FE2C55] border-[#FE2C55]/40 bg-[#FE2C55]/10' : 'text-slate-300 border-slate-800 bg-slate-950 hover:border-slate-700';
+
+        const isSaved = Boolean(userRec.fire);
+        const saveClass = isSaved ? 'text-amber-400 border-amber-500/40 bg-amber-500/10' : 'text-slate-300 border-slate-800 bg-slate-950 hover:border-amber-500/40';
+
+        const isBoosted = Boolean(userRec.rocket);
+        const boostClass = isBoosted ? 'text-blue-400 border-blue-500/40 bg-blue-500/10' : 'text-slate-300 border-slate-800 bg-slate-950 hover:border-blue-500/40';
 
         const card = document.createElement('article');
         card.className = 'bg-slate-900/75 border border-slate-800/90 hover:border-blue-500/40 rounded-3xl p-5 sm:p-6 shadow-xl transition fade-in';
@@ -1848,17 +2517,17 @@
 
           <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
             <div class="flex items-center gap-2">
-              <!-- TikTok Vector Heart Like Button -->
+              <!-- Strict 1-Like Per User Heart Button -->
               <button type="button" onclick="reactToAgent(${ag.agent_id}, 'like')"
                 id="likeBtn-${ag.agent_id}"
                 class="${heartTextClass} border rounded-full px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5 transition">
                 <svg id="likeSvg-${ag.agent_id}" class="w-4 h-4 transition-transform" viewBox="0 0 24 24" fill="${heartFill}" stroke="${heartStroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                 </svg>
-                <span id="likeCount-${ag.agent_id}">${ag.likes_count || 0}</span>
+                <span id="likeCount-${ag.agent_id}">${displayLikes}</span>
               </button>
 
-              <!-- Vector Comment / Review Button -->
+              <!-- Comment / Review Button -->
               <button type="button" onclick="openCommentsModal(${ag.agent_id})"
                 title="Comments & Verified Reviews"
                 class="bg-slate-950 hover:border-blue-500/40 border border-slate-800 rounded-full px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-1.5 transition">
@@ -1868,26 +2537,28 @@
                 <span id="commentCount-${ag.agent_id}">${ag.comments_count || 0}</span>
               </button>
 
-              <!-- Vector Bookmark Button -->
+              <!-- Strict 1-Save Per User Bookmark Button -->
               <button type="button" onclick="reactToAgent(${ag.agent_id}, 'fire')"
-                title="Save Agent"
-                class="bg-slate-950 hover:border-amber-500/40 border border-slate-800 rounded-full px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-amber-400 flex items-center gap-1.5 transition">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                id="fireBtn-${ag.agent_id}"
+                title="Save Agent (Max 1 per user)"
+                class="${saveClass} border rounded-full px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5 transition">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
                 </svg>
-                <span id="fireCount-${ag.agent_id}">${ag.fire_count || 0}</span>
+                <span id="fireCount-${ag.agent_id}">${displayFire}</span>
               </button>
 
-              <!-- Vector Boost Button -->
+              <!-- Strict 1-Boost Per User Button -->
               <button type="button" onclick="reactToAgent(${ag.agent_id}, 'rocket')"
-                title="Boost Agent"
-                class="bg-slate-950 hover:border-blue-500/40 border border-slate-800 rounded-full px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-blue-400 flex items-center gap-1.5 transition">
+                id="rocketBtn-${ag.agent_id}"
+                title="Boost Agent (Max 1 per user)"
+                class="${boostClass} border rounded-full px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5 transition">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
                   <polyline points="16 6 12 2 8 6"/>
                   <line x1="12" y1="2" x2="12" y2="15"/>
                 </svg>
-                <span id="rocketCount-${ag.agent_id}">${ag.rocket_count || 0}</span>
+                <span id="rocketCount-${ag.agent_id}">${displayRocket}</span>
               </button>
             </div>
 
@@ -1905,6 +2576,86 @@
         `;
         grid.appendChild(card);
       });
+    }
+
+    async function reactToAgent(agentId, reactionType) {
+      const lockKey = agentId + '_' + reactionType;
+      if (reactionLockMap[lockKey]) return;
+      reactionLockMap[lockKey] = true;
+
+      try {
+        const ledger = getUserReactionLedger();
+        const ag = loadedAgentsById[agentId] || {};
+        const currentRec = ledger[agentId] || {
+          like: Boolean(ag.user_liked),
+          fire: false,
+          rocket: false
+        };
+
+        // Toggle ON or OFF — one user can NEVER add more than 1 reaction
+        const nextState = !currentRec[reactionType];
+        currentRec[reactionType] = nextState;
+        ledger[agentId] = currentRec;
+        saveUserReactionLedger(ledger);
+
+        if (reactionType === 'like') {
+          const countEl = document.getElementById('likeCount-' + agentId);
+          const btnEl = document.getElementById('likeBtn-' + agentId);
+          const svgEl = document.getElementById('likeSvg-' + agentId);
+          let count = parseInt(countEl ? countEl.innerText : '0', 10) || 0;
+          count = nextState ? count + 1 : Math.max(0, count - 1);
+          if (countEl) countEl.innerText = count;
+          if (svgEl) {
+            svgEl.setAttribute('fill', nextState ? '#FE2C55' : 'none');
+            svgEl.setAttribute('stroke', nextState ? '#FE2C55' : 'currentColor');
+            svgEl.classList.remove('heart-pop');
+            void svgEl.offsetWidth;
+            svgEl.classList.add('heart-pop');
+          }
+          if (btnEl) {
+            btnEl.className = (nextState
+              ? 'text-[#FE2C55] border-[#FE2C55]/40 bg-[#FE2C55]/10'
+              : 'text-slate-300 border-slate-800 bg-slate-950 hover:border-slate-700') +
+              ' border rounded-full px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5 transition';
+          }
+          await fetch('/api/v1/agents/' + agentId + '/react', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + window.authToken
+            },
+            body: JSON.stringify({ reaction_type: 'like' })
+          });
+        } else if (reactionType === 'fire') {
+          const countEl = document.getElementById('fireCount-' + agentId);
+          const btnEl = document.getElementById('fireBtn-' + agentId);
+          let count = parseInt(countEl ? countEl.innerText : '0', 10) || 0;
+          count = nextState ? 1 : Math.max(0, count - 1);
+          if (countEl) countEl.innerText = count;
+          if (btnEl) {
+            btnEl.className = (nextState
+              ? 'text-amber-400 border-amber-500/40 bg-amber-500/10'
+              : 'text-slate-300 border-slate-800 bg-slate-950 hover:border-amber-500/40') +
+              ' border rounded-full px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5 transition';
+          }
+        } else if (reactionType === 'rocket') {
+          const countEl = document.getElementById('rocketCount-' + agentId);
+          const btnEl = document.getElementById('rocketBtn-' + agentId);
+          let count = parseInt(countEl ? countEl.innerText : '0', 10) || 0;
+          count = nextState ? 1 : Math.max(0, count - 1);
+          if (countEl) countEl.innerText = count;
+          if (btnEl) {
+            btnEl.className = (nextState
+              ? 'text-blue-400 border-blue-500/40 bg-blue-500/10'
+              : 'text-slate-300 border-slate-800 bg-slate-950 hover:border-blue-500/40') +
+              ' border rounded-full px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5 transition';
+          }
+        }
+      } finally {
+        setTimeout(function() {
+          reactionLockMap[lockKey] = false;
+        }, 300);
+      }
     }
 
     async function openCommentsModal(agentId) {
@@ -2020,51 +2771,6 @@
         document.getElementById('sandboxReplyText').innerText = data.agent_reply;
       } else {
         document.getElementById('sandboxReplyText').innerText = String(data.detail || 'Preview error.');
-      }
-    }
-
-    async function reactToAgent(agentId, reactionType) {
-      const res = await fetch('/api/v1/agents/' + agentId + '/react', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + window.authToken
-        },
-        body: JSON.stringify({ reaction_type: reactionType })
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-
-      const target = allMarketplaceAgents.find(function(a) { return a.agent_id === agentId; });
-      if (target) {
-        target.likes_count = data.likes_count;
-        target.fire_count = data.fire_count;
-        target.rocket_count = data.rocket_count;
-        target.user_liked = data.user_liked;
-      }
-
-      const likeCountEl = document.getElementById('likeCount-' + agentId);
-      const fireCountEl = document.getElementById('fireCount-' + agentId);
-      const rocketCountEl = document.getElementById('rocketCount-' + agentId);
-      const likeBtnEl = document.getElementById('likeBtn-' + agentId);
-      const likeSvgEl = document.getElementById('likeSvg-' + agentId);
-
-      if (likeCountEl) likeCountEl.innerText = data.likes_count;
-      if (fireCountEl) fireCountEl.innerText = data.fire_count;
-      if (rocketCountEl) rocketCountEl.innerText = data.rocket_count;
-
-      if (likeBtnEl && likeSvgEl) {
-        const liked = Boolean(data.user_liked);
-        likeSvgEl.setAttribute('fill', liked ? '#FE2C55' : 'none');
-        likeSvgEl.setAttribute('stroke', liked ? '#FE2C55' : 'currentColor');
-        likeSvgEl.classList.remove('heart-pop');
-        void likeSvgEl.offsetWidth;
-        likeSvgEl.classList.add('heart-pop');
-
-        likeBtnEl.className = (liked
-          ? 'text-[#FE2C55] border-[#FE2C55]/40 bg-[#FE2C55]/10'
-          : 'text-slate-300 border-slate-800 bg-slate-950 hover:border-slate-700') +
-          ' border rounded-full px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5 transition';
       }
     }
 
@@ -2197,7 +2903,7 @@
     }
 
     async function processLiveMentorTurn(spokenText) {
-      appendChatBubble('user', spokenText, false);
+      appendChatBubbleDOM('user', spokenText, false);
       try {
         const res = await fetch('/api/v1/mentor/interview', {
           method: 'POST',
@@ -2214,7 +2920,8 @@
         history.push({ role: 'user', content: spokenText });
         history.push({ role: 'assistant', content: data.ai_reply });
 
-        appendChatBubble('assistant', data.ai_reply, data.can_show_marketplace_button);
+        recordMentorTurnInSession(spokenText, data.ai_reply);
+        appendChatBubbleDOM('assistant', data.ai_reply, data.can_show_marketplace_button);
         speakOutLoudInLiveMode(data.ai_reply);
       } catch (err) {
         speakOutLoudInLiveMode('I had trouble reaching the server. Let us try again.');
@@ -2301,11 +3008,15 @@
     }
 
     // =========================================================================
-    // CREATOR PROFILE, WALLET PAYOUTS & AGENT MANAGEMENT
+    // DEVELOPER STUDIO, BUYER LEDGER & WALLET PAYOUTS
     // =========================================================================
     function syncDeveloperView() {
       const onboarding = document.getElementById('devOnboardingBox');
       const creatorPage = document.getElementById('devCreatorProfile');
+
+      const avail = myDeveloperProfile ? (myDeveloperProfile.available_balance_usd || 0) : 0;
+      const drawerEarn = document.getElementById('drawerDevEarningsBadge');
+      if (drawerEarn) drawerEarn.innerText = '$' + avail.toFixed(0);
 
       if (!myDeveloperProfile) {
         onboarding.classList.remove('hidden');
@@ -2315,7 +3026,8 @@
         creatorPage.classList.remove('hidden');
 
         document.getElementById('navUserAvatar').src = myDeveloperProfile.avatar_url;
-        document.getElementById('navProfileLabel').innerText = '@' + myDeveloperProfile.username;
+        document.getElementById('topBarAvatar').src = myDeveloperProfile.avatar_url;
+        document.getElementById('acctPageAvatar').src = myDeveloperProfile.avatar_url;
 
         document.getElementById('liAvatar').src = myDeveloperProfile.avatar_url;
         document.getElementById('liName').innerText = myDeveloperProfile.display_name;
@@ -2338,19 +3050,16 @@
           feed.innerHTML = '<div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 text-center text-xs text-slate-400">Click "+ Post New AI Agent" above to publish your first agent under your profile.</div>';
         } else {
           feed.innerHTML = agents.map(function(a) {
+            const estEarned = ((a.active_subscribers || 0) * (a.monthly_price_usd || 0) * 0.75).toFixed(2);
             return `
               <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 flex items-center justify-between gap-4">
                 <div>
                   <span class="text-[11px] uppercase tracking-wider text-blue-400 font-semibold">${escapeHtml(a.industry)}</span>
                   <h4 class="text-base font-semibold text-white mt-0.5">${escapeHtml(a.name)}</h4>
                   <p class="text-xs text-slate-400 mt-1">${escapeHtml(a.tagline)}</p>
-                  <div class="flex items-center gap-4 mt-2.5 text-[11px] text-slate-400">
-                    <span class="flex items-center gap-1">
-                      <svg class="w-3.5 h-3.5 text-[#FE2C55]" viewBox="0 0 24 24" fill="#FE2C55"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                      ${a.likes_count || 0} Likes
-                    </span>
+                  <div class="flex flex-wrap items-center gap-4 mt-2.5 text-[11px] text-slate-400">
+                    <span class="text-emerald-400 font-semibold">${a.active_subscribers || 0} Buyers (+$${estEarned}/mo)</span>
                     <span>${a.comments_count || 0} Reviews</span>
-                    <span>${a.active_subscribers} Subscribers</span>
                   </div>
                 </div>
                 <div class="text-right shrink-0 flex flex-col items-end gap-2">
@@ -2368,16 +3077,16 @@
         const ledger = document.getElementById('liSubscriberLedger');
         const subs = myDeveloperProfile.recent_subscribers || [];
         if (subs.length === 0) {
-          ledger.innerHTML = '<div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 text-slate-500">When businesses subscribe to your agents, your 75% revenue payouts appear here.</div>';
+          ledger.innerHTML = '<div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 text-slate-500">When businesses buy your agents, you will see who bought them and your 75% earnings here.</div>';
         } else {
           ledger.innerHTML = subs.map(function(s) {
             return `
               <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3.5 flex items-center justify-between">
                 <div>
                   <div class="text-white font-medium">${escapeHtml(s.business_name)} <span class="text-[10px] text-slate-500 mono ml-1">${escapeHtml(s.invoice_code || '')}</span></div>
-                  <div class="text-[11px] text-slate-400">${escapeHtml(s.agent_name)} • ${escapeHtml(s.payment_method || 'Card')}</div>
+                  <div class="text-[11px] text-slate-400">Bought: ${escapeHtml(s.agent_name)} • ${escapeHtml(s.payment_method || 'Card')}</div>
                 </div>
-                <span class="text-blue-400 font-bold mono">+$${s.creator_earned_usd}</span>
+                <span class="text-emerald-400 font-bold mono">+$${s.creator_earned_usd}</span>
               </div>
             `;
           }).join('');
@@ -2576,9 +3285,17 @@
       const data = await res.json();
 
       if (res.ok) {
+        // Force newly published agent to start at 0 likes & unliked
+        if (data.agent_id) {
+          markAgentZeroBaseline(data.agent_id);
+          const ledger = getUserReactionLedger();
+          ledger[data.agent_id] = { like: false, fire: false, rocket: false };
+          saveUserReactionLedger(ledger);
+        }
+
         myDeveloperProfile = data.developer_profile;
         statusBox.className = 'mt-4 p-3.5 rounded-xl text-xs bg-blue-500/10 border border-blue-500/30 text-blue-300';
-        statusBox.innerText = 'Published "' + data.name + '" under your profile!';
+        statusBox.innerText = 'Published "' + data.name + '" starting at 0 likes!';
         document.getElementById('agName').value = '';
         document.getElementById('agTagline').value = '';
         document.getElementById('agDescription').value = '';
@@ -2605,7 +3322,7 @@
       if (!text) return;
 
       input.value = '';
-      appendChatBubble('user', text, false);
+      appendChatBubbleDOM('user', text, false);
 
       const res = await fetch('/api/v1/mentor/interview', {
         method: 'POST',
@@ -2622,10 +3339,11 @@
       history.push({ role: 'user', content: text });
       history.push({ role: 'assistant', content: data.ai_reply });
 
-      appendChatBubble('assistant', data.ai_reply, data.can_show_marketplace_button);
+      recordMentorTurnInSession(text, data.ai_reply);
+      appendChatBubbleDOM('assistant', data.ai_reply, data.can_show_marketplace_button);
     }
 
-    function appendChatBubble(role, text, showMarketplaceBtn) {
+    function appendChatBubbleDOM(role, text, showMarketplaceBtn) {
       const stream = document.getElementById('chatStream');
       const div = document.createElement('div');
       div.className = 'fade-in flex gap-3 sm:gap-4 items-start ' + (role === 'user' ? 'justify-end' : '');
@@ -2637,7 +3355,7 @@
           <div class="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
             <span class="text-xs text-slate-400">Ready when you are—or keep chatting below.</span>
             <button type="button" onclick="switchView('marketplace')" class="selgo-blue-btn text-white font-semibold text-xs px-4 py-2 rounded-full transition">
-              Explore Social Marketplace
+              Explore Agent Market
             </button>
           </div>
         ` : '';
@@ -2742,16 +3460,35 @@
     }
 
     function syncSubscriptionsNavAndWorkspace(selectSubId) {
-      const tabWs = document.getElementById('tabWorkspace');
       const countSpan = document.getElementById('navSubCount');
-      countSpan.innerText = mySubscriptions.length;
+      if (countSpan) countSpan.innerText = mySubscriptions.length;
+
+      // Update aggregate Business Owner KPI totals
+      let totalTasks = 0;
+      let totalMinutes = 0;
+      let totalVal = 0;
+      mySubscriptions.forEach(function(s) {
+        totalTasks += (s.tasks_completed || 0);
+        totalMinutes += (s.minutes_saved || 0);
+        totalVal += (s.value_created_usd || 0);
+      });
+      document.getElementById('bizTotalAgentsCount').innerText = mySubscriptions.length;
+      document.getElementById('bizTotalTasksCount').innerText = totalTasks;
+      document.getElementById('bizTotalTimeSaved').innerText = totalMinutes + 'm';
+      document.getElementById('bizTotalValueCreated').innerText = '$' + totalVal;
+
+      const emptyBox = document.getElementById('workspaceEmptyState');
+      const activeBox = document.getElementById('workspaceActiveContainer');
 
       if (mySubscriptions.length === 0) {
-        tabWs.classList.add('hidden');
+        if (emptyBox) emptyBox.classList.remove('hidden');
+        if (activeBox) activeBox.classList.add('hidden');
         return;
       }
 
-      tabWs.classList.remove('hidden');
+      if (emptyBox) emptyBox.classList.add('hidden');
+      if (activeBox) activeBox.classList.remove('hidden');
+
       const targetId = selectSubId || activeSubscriptionId || mySubscriptions[0].subscription_id;
       selectActiveSubscription(targetId);
     }
@@ -2828,6 +3565,7 @@
         sub.value_created_usd = data.metrics.value_created_usd;
         if (data.chat_history) sub.chat_history = data.chat_history;
       }
+      syncSubscriptionsNavAndWorkspace(activeSubscriptionId);
 
       const entries = Object.entries(data.structured_output || {});
       const resultContainer = document.getElementById('wsResultCards');
