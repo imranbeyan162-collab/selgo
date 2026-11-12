@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 import os
+import shutil
 from typing import Generator
 from dotenv import load_dotenv
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text, create_engine
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text, create_engine, text
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 load_dotenv()
@@ -18,17 +19,39 @@ if raw_db_url.startswith("postgres://"):
 
 Base = declarative_base()
 
-# Safely create the database engine; fall back to /tmp SQLite if DATABASE_URL has a typo
+
+def _create_writable_sqlite_engine():
+    if os.name != "nt":
+        tmp_db = "/tmp/selgo.db"
+        if not os.path.exists(tmp_db) and os.path.exists("selgo.db"):
+            try:
+                shutil.copyfile("selgo.db", tmp_db)
+                os.chmod(tmp_db, 0o666)
+            except Exception:
+                pass
+        sqlite_url = "sqlite:////tmp/selgo.db"
+    else:
+        sqlite_url = "sqlite:///./selgo.db"
+    return sqlite_url, create_engine(
+        sqlite_url, connect_args={"check_same_thread": False}, pool_pre_ping=True
+    )
+
+
 try:
-    if not raw_db_url or "[" in raw_db_url or "]" in raw_db_url:
-        raise ValueError("DATABASE_URL is empty or still contains [ ] brackets")
-    connect_args = {"check_same_thread": False} if raw_db_url.startswith("sqlite") else {}
-    engine = create_engine(raw_db_url, connect_args=connect_args, pool_pre_ping=True)
+    if (
+        not raw_db_url
+        or "[" in raw_db_url
+        or "]" in raw_db_url
+        or raw_db_url.startswith("sqlite")
+    ):
+        raise ValueError("Using writable SQLite engine")
+    engine = create_engine(raw_db_url, pool_pre_ping=True)
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
     DATABASE_URL = raw_db_url
 except Exception as engine_err:
-    print("Primary DATABASE_URL failed, using /tmp fallback:", engine_err)
-    DATABASE_URL = "sqlite:////tmp/selgo.db"
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False}, pool_pre_ping=True)
+    print("Switching to writable SQLite fallback:", engine_err)
+    DATABASE_URL, engine = _create_writable_sqlite_engine()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -165,8 +188,7 @@ try:
     Base.metadata.create_all(bind=engine)
 except Exception as db_init_err:
     print("Database table creation failed, switching to /tmp fallback:", db_init_err)
-    DATABASE_URL = "sqlite:////tmp/selgo.db"
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False}, pool_pre_ping=True)
+    DATABASE_URL, engine = _create_writable_sqlite_engine()
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
 
