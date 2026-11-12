@@ -43,9 +43,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 SESSION_TTL_DAYS = 30
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception:
+    pass
 
 
 def log_rl_reward_event(

@@ -7,7 +7,13 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 load_dotenv()
 
-raw_db_url = os.getenv("DATABASE_URL", "sqlite:///./selgo.db").strip()
+# Check both uppercase and lowercase just in case!
+raw_db_url = (
+    os.getenv("DATABASE_URL")
+    or os.getenv("database_url")
+    or "sqlite:////tmp/selgo.db"
+).strip()
+
 if raw_db_url.startswith("postgres://"):
     raw_db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
 
@@ -152,7 +158,10 @@ class RLTrajectoryModel(Base):
     created_at = Column(DateTime, default=utc_now, nullable=False)
 
 
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as db_init_err:
+    print("Database init warning:", db_init_err)
 
 
 def get_db() -> Generator[Session, None, None]:
