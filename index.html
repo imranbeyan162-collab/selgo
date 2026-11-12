@@ -1,6 +1,39 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<style>
+  html, body {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  @media (max-width: 768px) {
+    /* Fit mail popups and floating boxes inside the phone screen */
+    [id*="Toast"], [id*="toast"], [id*="Mail"], [id*="mail"], .fixed:not(.inset-0) {
+      left: 0.75rem !important;
+      right: 0.75rem !important;
+      width: auto !important;
+      max-width: calc(100vw - 1.5rem) !important;
+      box-sizing: border-box !important;
+    }
+    /* Keep top navigation bar and buttons inside the screen */
+    header, nav {
+      flex-wrap: wrap !important;
+      padding-left: 0.75rem !important;
+      padding-right: 0.75rem !important;
+      gap: 0.5rem !important;
+    }
+    /* Wrap long email addresses and shrink large titles for mobile */
+    p, span, div, a {
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+    h1 {
+      font-size: 1.75rem !important;
+      line-height: 1.25 !important;
+    }
+  }
+</style>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Selgo — AI Agents • Automated for You</title>
