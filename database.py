@@ -7,27 +7,30 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 load_dotenv()
 
-# Check both uppercase and lowercase just in case!
 raw_db_url = (
     os.getenv("DATABASE_URL")
     or os.getenv("database_url")
-    or "sqlite:////tmp/selgo.db"
-).strip()
+    or ""
+).strip().strip('"').strip("'")
 
 if raw_db_url.startswith("postgres://"):
     raw_db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
 
-DATABASE_URL = raw_db_url
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+Base = declarative_base()
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args=connect_args,
-    pool_pre_ping=True,
-)
+# Safely create the database engine; fall back to /tmp SQLite if DATABASE_URL has a typo
+try:
+    if not raw_db_url or "[" in raw_db_url or "]" in raw_db_url:
+        raise ValueError("DATABASE_URL is empty or still contains [ ] brackets")
+    connect_args = {"check_same_thread": False} if raw_db_url.startswith("sqlite") else {}
+    engine = create_engine(raw_db_url, connect_args=connect_args, pool_pre_ping=True)
+    DATABASE_URL = raw_db_url
+except Exception as engine_err:
+    print("Primary DATABASE_URL failed, using /tmp fallback:", engine_err)
+    DATABASE_URL = "sqlite:////tmp/selgo.db"
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False}, pool_pre_ping=True)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
 
 
 def utc_now() -> datetime:
@@ -140,7 +143,7 @@ class PayoutRequestModel(Base):
     developer_id = Column(Integer, nullable=False, index=True)
     amount_cents = Column(Integer, nullable=False)
     payout_method = Column(String(80), nullable=False)
-    Destination_account = Column(String(160), nullable=False)
+    destination_account = Column(String(160), nullable=False)
     status = Column(String(30), default="PROCESSED", nullable=False)
     reference_code = Column(String(40), nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
@@ -161,7 +164,11 @@ class RLTrajectoryModel(Base):
 try:
     Base.metadata.create_all(bind=engine)
 except Exception as db_init_err:
-    print("Database init warning:", db_init_err)
+    print("Database table creation failed, switching to /tmp fallback:", db_init_err)
+    DATABASE_URL = "sqlite:////tmp/selgo.db"
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False}, pool_pre_ping=True)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
 
 
 def get_db() -> Generator[Session, None, None]:
