@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  selgo-postgres:
+    image: pgvector/pgvector:pg16
+    container_name: selgo-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: selgo_admin
+      POSTGRES_PASSWORD: selgo_production_password
+      POSTGRES_DB: selgo_cloud
+    ports:
+      - "5432:5432"
+    volumes:
+      - selgo_pgdata:/var/lib/postgresql/data
+
+  selgo-backend:
+    build: .
+    container_name: selgo-backend
+    restart: always
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://selgo_admin:selgo_production_password@selgo-postgres:5432/selgo_cloud
+    ports:
+      - "8000:8000"
+    depends_on:
+      - selgo-postgres
+
+volumes:
+  selgo_pgdata:

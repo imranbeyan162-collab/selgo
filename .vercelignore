@@ -1,0 +1,5 @@
+venv
+selgo-web
+__pycache__
+*.db
+.env

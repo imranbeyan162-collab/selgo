@@ -1,0 +1,9 @@
+.env
+.env.*
+selgo.db
+*.db
+venv/
+__pycache__/
+node_modules/
+.next/
+.vercel/

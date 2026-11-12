@@ -1,0 +1,2847 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Selgo — AI Agents • Automated for You</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #050811;
+      color: #F8FAFC;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .fade-in { animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes heartPop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.32); }
+      70% { transform: scale(0.92); }
+      100% { transform: scale(1); }
+    }
+    .heart-pop { animation: heartPop 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    @keyframes orbPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 45px rgba(0, 82, 255, 0.45); }
+      50% { transform: scale(1.14); box-shadow: 0 0 95px rgba(37, 99, 235, 0.85); }
+    }
+    @keyframes orbSpeak {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 55px rgba(59, 130, 246, 0.55); }
+      50% { transform: scale(1.22); box-shadow: 0 0 115px rgba(0, 102, 255, 0.95); }
+    }
+    .orb-listening { animation: orbPulse 2s infinite ease-in-out; }
+    .orb-speaking { animation: orbSpeak 1.1s infinite ease-in-out; }
+    .selgo-blue-btn {
+      background: linear-gradient(135deg, #0052FF 0%, #1D4ED8 100%);
+    }
+    .selgo-blue-btn:hover {
+      background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%);
+    }
+  </style>
+
+  <script>
+    window.authMode = 'login';
+    window.authToken = localStorage.getItem('selgo_auth_token') || null;
+
+    window.toggleAuthMode = function(mode) {
+      window.authMode = mode;
+      var loginSignupBox = document.getElementById('loginSignupFormWrapper');
+      var forgotBox = document.getElementById('forgotPasswordWrapper');
+      var nameBox = document.getElementById('signupNameWrapper');
+      var strengthBox = document.getElementById('passwordStrengthHint');
+      var submitBtn = document.getElementById('authSubmitBtn');
+      var loginTab = document.getElementById('tabLoginBtn');
+      var signupTab = document.getElementById('tabSignupBtn');
+      var sliderPill = document.getElementById('authSliderPill');
+      var errBox = document.getElementById('authErrorBox');
+      var bottomSwitchText = document.getElementById('authBottomSwitchText');
+
+      if (errBox) errBox.classList.add('hidden');
+
+      if (mode === 'forgot') {
+        if (loginSignupBox) loginSignupBox.classList.add('hidden');
+        if (forgotBox) forgotBox.classList.remove('hidden');
+        return;
+      }
+
+      if (loginSignupBox) loginSignupBox.classList.remove('hidden');
+      if (forgotBox) forgotBox.classList.add('hidden');
+
+      if (mode === 'signup') {
+        if (nameBox) nameBox.classList.remove('hidden');
+        if (strengthBox) strengthBox.classList.remove('hidden');
+        if (submitBtn) submitBtn.innerText = 'Create My Selgo Account';
+        if (sliderPill) sliderPill.style.transform = 'translateX(100%)';
+        if (loginTab) loginTab.className = 'relative z-10 py-2.5 rounded-lg text-slate-400 hover:text-white font-medium transition';
+        if (signupTab) signupTab.className = 'relative z-10 py-2.5 rounded-lg text-white font-semibold transition';
+        if (bottomSwitchText) {
+          bottomSwitchText.innerHTML = 'Already have an account? <button type="button" onclick="toggleAuthMode(\'login\')" class="text-blue-400 hover:underline font-semibold ml-1">Log In</button>';
+        }
+      } else {
+        if (nameBox) nameBox.classList.add('hidden');
+        if (strengthBox) strengthBox.classList.add('hidden');
+        if (submitBtn) submitBtn.innerText = 'Log In to Selgo';
+        if (sliderPill) sliderPill.style.transform = 'translateX(0%)';
+        if (loginTab) loginTab.className = 'relative z-10 py-2.5 rounded-lg text-white font-semibold transition';
+        if (signupTab) signupTab.className = 'relative z-10 py-2.5 rounded-lg text-slate-400 hover:text-white font-medium transition';
+        if (bottomSwitchText) {
+          bottomSwitchText.innerHTML = 'New to Selgo? <button type="button" onclick="toggleAuthMode(\'signup\')" class="text-blue-400 hover:underline font-semibold ml-1">Create Account</button>';
+        }
+      }
+    };
+
+    window.checkPasswordStrengthLive = function(val) {
+      var bar = document.getElementById('pwStrengthBar');
+      var label = document.getElementById('pwStrengthLabel');
+      if (!bar || !label) return;
+      var hasLen = val.length >= 8;
+      var hasLet = /[A-Za-z]/.test(val);
+      var hasNum = /[0-9]/.test(val);
+      var score = (hasLen ? 1 : 0) + (hasLet ? 1 : 0) + (hasNum ? 1 : 0);
+
+      if (score === 0) {
+        bar.className = 'h-1 rounded-full bg-slate-800 w-1/4 transition-all';
+        label.innerText = 'Use 8+ characters with letters & numbers';
+        label.className = 'text-[11px] text-slate-500';
+      } else if (score < 3) {
+        bar.className = 'h-1 rounded-full bg-amber-400 w-2/3 transition-all';
+        label.innerText = 'Almost strong — include 8+ chars, letters & numbers';
+        label.className = 'text-[11px] text-amber-400';
+      } else {
+        bar.className = 'h-1 rounded-full bg-emerald-400 w-full transition-all';
+        label.innerText = 'Strong password ready';
+        label.className = 'text-[11px] text-emerald-400';
+      }
+    };
+  </script>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- INSTANT EMAIL & TRANSACTION RECEIPT TOAST -->
+  <div id="emailToast" class="hidden fixed top-5 right-5 z-50 max-w-sm w-full bg-slate-900/95 border border-blue-500/40 rounded-2xl p-4 shadow-2xl backdrop-blur-md fade-in">
+    <div class="flex items-start justify-between gap-3">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+          </svg>
+        </div>
+        <div>
+          <div class="text-[10px] uppercase tracking-wider text-blue-400 font-semibold" id="emailToastDelivery">Email Notification Sent</div>
+          <div class="text-xs font-bold text-white" id="emailToastSubject"></div>
+        </div>
+      </div>
+      <button type="button" onclick="document.getElementById('emailToast').classList.add('hidden')" class="w-6 h-6 rounded-full hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <p id="emailToastBody" class="text-xs text-slate-300 mt-2.5 leading-relaxed whitespace-pre-line bg-slate-950/80 border border-slate-800 rounded-xl p-3"></p>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- GATE 0: OFFICIAL SELGO BRAND LOGIN / SIGNUP / PASSWORD RECOVERY       -->
+  <!-- ===================================================================== -->
+  <div id="authGate" class="min-h-screen flex flex-col items-center justify-center px-6 py-12 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-950/30 via-[#050811] to-[#050811]">
+    
+    <div class="flex flex-col items-center mb-9 select-none">
+      <div class="flex items-center gap-4">
+        <svg class="w-14 h-14 drop-shadow-[0_0_25px_rgba(0,82,255,0.4)]" viewBox="0 0 100 100" fill="none">
+          <defs>
+            <linearGradient id="selgoTopRibbon" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#0066FF" />
+              <stop offset="100%" stop-color="#002677" />
+            </linearGradient>
+            <linearGradient id="selgoBotRibbon" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#002B7F" />
+              <stop offset="100%" stop-color="#0066FF" />
+            </linearGradient>
+          </defs>
+          <path d="M84 12 C52 22, 16 28, 16 48 C16 60, 34 65, 48 60 L38 52 C29 52, 28 46, 36 42 C48 36, 74 30, 84 12 Z" fill="url(#selgoTopRibbon)"/>
+          <path d="M16 88 C48 78, 84 72, 84 52 C84 40, 66 35, 52 40 L62 48 C71 48, 72 54, 64 58 C52 64, 26 70, 16 88 Z" fill="url(#selgoBotRibbon)"/>
+        </svg>
+        <div class="w-[1.5px] h-12 bg-gradient-to-b from-transparent via-blue-500/60 to-transparent"></div>
+        <span class="text-5xl font-extrabold tracking-tight text-white">Selgo</span>
+      </div>
+      <div class="mt-2.5 text-xs sm:text-sm font-medium tracking-[0.22em] uppercase text-blue-400">
+        AI Agents <span class="mx-1.5 text-blue-500">•</span> Automated for You
+      </div>
+    </div>
+
+    <div class="bg-slate-900/80 border border-slate-800/90 rounded-2xl max-w-md w-full p-7 shadow-2xl backdrop-blur-md">
+      <div id="loginSignupFormWrapper">
+        <div id="authToggleTrack" class="relative grid grid-cols-2 bg-slate-950 p-1 rounded-xl mb-6 text-xs select-none cursor-pointer">
+          <div id="authSliderPill" class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-lg bg-blue-600 transition-transform duration-200 ease-out"></div>
+          <button type="button" id="tabLoginBtn" onclick="toggleAuthMode('login')" class="relative z-10 py-2.5 rounded-lg text-white font-semibold transition">
+            Log In
+          </button>
+          <button type="button" id="tabSignupBtn" onclick="toggleAuthMode('signup')" class="relative z-10 py-2.5 rounded-lg text-slate-400 hover:text-white font-medium transition">
+            Create Account
+          </button>
+        </div>
+
+        <form onsubmit="submitAuthForm(event)" class="space-y-4">
+          <div id="signupNameWrapper" class="hidden fade-in">
+            <label class="text-xs text-slate-400 block mb-1.5">Full Name</label>
+            <input id="authFullName" type="text" placeholder="e.g., Imran Mohamedbeyan"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+          </div>
+
+          <div>
+            <label class="text-xs text-slate-400 block mb-1.5">Email Address</label>
+            <input id="authEmail" type="email" required placeholder="you@example.com"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-xs text-slate-400">Password</label>
+              <button type="button" onclick="toggleAuthMode('forgot')" class="text-[11px] text-blue-400 hover:underline">
+                Forgot password?
+              </button>
+            </div>
+            <input id="authPassword" type="password" required oninput="checkPasswordStrengthLive(this.value)" placeholder="••••••••"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+            
+            <div id="passwordStrengthHint" class="hidden mt-2 space-y-1">
+              <div class="w-full bg-slate-950 rounded-full h-1 overflow-hidden">
+                <div id="pwStrengthBar" class="h-1 rounded-full bg-slate-800 w-1/4 transition-all"></div>
+              </div>
+              <div id="pwStrengthLabel" class="text-[11px] text-slate-500">Use 8+ characters with letters & numbers</div>
+            </div>
+          </div>
+
+          <div id="authErrorBox" class="hidden text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3"></div>
+
+          <button type="submit" id="authSubmitBtn"
+            class="w-full selgo-blue-btn text-white font-semibold text-xs py-3.5 rounded-xl shadow-lg shadow-blue-600/20 transition">
+            Log In to Selgo
+          </button>
+
+          <div class="text-center text-[11px] text-slate-500 pt-1">
+            Stays signed in on this device for 30 days automatically.
+          </div>
+
+          <div id="authBottomSwitchText" class="text-center text-xs text-slate-400 pt-1">
+            New to Selgo? <button type="button" onclick="toggleAuthMode('signup')" class="text-blue-400 hover:underline font-semibold ml-1">Create Account</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- FORGOT PASSWORD EMAIL RECOVERY FLOW -->
+      <div id="forgotPasswordWrapper" class="hidden fade-in space-y-4">
+        <div>
+          <span class="text-[11px] uppercase tracking-widest text-blue-400 font-semibold">Account Recovery</span>
+          <h3 class="text-lg font-bold text-white mt-0.5">Recover Your Password</h3>
+          <p class="text-xs text-slate-400 mt-1">Enter your email to receive a 6-digit recovery code.</p>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Your Account Email</label>
+            <div class="flex gap-2">
+              <input id="recoverEmail" type="email" placeholder="you@example.com"
+                class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500" />
+              <button type="button" onclick="sendRecoveryCode()"
+                class="bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shrink-0 transition">
+                Send Code
+              </button>
+            </div>
+          </div>
+
+          <div id="recoverStep2Box" class="hidden space-y-3 pt-2 border-t border-slate-800">
+            <div>
+              <label class="text-xs text-slate-400 block mb-1">6-Digit Recovery Code (Sent to your Email)</label>
+              <input id="recoverCodeInput" type="text" placeholder="123456"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm mono text-blue-400 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 block mb-1">New Strong Password (8+ chars, letters & numbers)</label>
+              <input id="recoverNewPassword" type="password" placeholder="••••••••"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+            </div>
+            <button type="button" onclick="confirmPasswordReset()"
+              class="w-full selgo-blue-btn text-white font-semibold text-xs py-3 rounded-xl transition">
+              Verify Code & Update Password
+            </button>
+          </div>
+
+          <div id="recoverStatusBox" class="hidden text-xs p-3 rounded-xl"></div>
+
+          <button type="button" onclick="toggleAuthMode('login')" class="w-full text-center text-xs text-slate-400 hover:text-white pt-2">
+            Back to Log In
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- LIVE VOICE CALL OVERLAY                                               -->
+  <!-- ===================================================================== -->
+  <div id="liveVoiceOverlay" class="hidden fixed inset-0 bg-[#050811]/98 backdrop-blur-xl z-50 flex flex-col items-center justify-between p-8">
+    <div class="w-full max-w-2xl flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping"></span>
+        <div>
+          <div id="liveVoiceTitle" class="text-sm font-semibold text-white">Selgo Live Voice</div>
+          <div id="liveVoiceSubtitle" class="text-xs text-slate-400">Hands-free real-time voice conversation</div>
+        </div>
+      </div>
+      <button type="button" onclick="stopLiveVoiceCall()"
+        class="w-10 h-10 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700/80 flex items-center justify-center text-slate-300 hover:text-white transition">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="flex flex-col items-center justify-center my-auto">
+      <div id="liveVoiceOrb" onclick="triggerManualListenInLiveMode()"
+        class="w-40 h-40 rounded-full bg-gradient-to-tr from-blue-600 via-blue-400 to-indigo-600 flex items-center justify-center cursor-pointer orb-listening transition-all">
+        <div class="w-32 h-32 rounded-full bg-[#050811] flex items-center justify-center">
+          <svg class="w-14 h-14" viewBox="0 0 100 100" fill="none">
+            <path d="M84 12 C52 22, 16 28, 16 48 C16 60, 34 65, 48 60 L38 52 C29 52, 28 46, 36 42 C48 36, 74 30, 84 12 Z" fill="#0066FF"/>
+            <path d="M16 88 C48 78, 84 72, 84 52 C84 40, 66 35, 52 40 L62 48 C71 48, 72 54, 64 58 C52 64, 26 70, 16 88 Z" fill="#3B82F6"/>
+          </svg>
+        </div>
+      </div>
+      <div id="liveVoiceStateBadge" class="mt-8 text-xs uppercase tracking-widest text-blue-400 font-semibold">
+        Listening to you...
+      </div>
+      <p id="liveVoiceTranscript" class="mt-4 text-center text-base sm:text-lg text-slate-200 max-w-xl leading-relaxed min-h-[3.5rem]">
+        Speak naturally—I'm listening.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <button type="button" onclick="interruptAndSpeakNow()"
+        class="h-11 px-5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-medium flex items-center gap-2.5 transition">
+        <svg class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="2" width="6" height="11" rx="3"/>
+          <path d="M5 10a7 7 0 0 0 14 0"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+        <span>Tap to Interrupt</span>
+      </button>
+      <button type="button" onclick="stopLiveVoiceCall()"
+        class="h-11 px-6 rounded-full bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-semibold transition">
+        End Call
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- PUBLIC CREATOR PROFILE MODAL                                          -->
+  <!-- ===================================================================== -->
+  <div id="publicDevModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl fade-in">
+      <div class="h-20 bg-gradient-to-r from-blue-900/80 via-slate-900 to-slate-950 flex items-start justify-end p-4">
+        <button type="button" onclick="closePublicDevModal()" class="w-8 h-8 rounded-full bg-black/50 hover:bg-black text-slate-300 hover:text-white flex items-center justify-center">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="px-7 pb-7">
+        <div class="flex items-end gap-4 -mt-10">
+          <img id="pubDevAvatar" src="" class="w-20 h-20 rounded-2xl object-cover border-4 border-slate-900 bg-slate-950" />
+          <div class="pb-1">
+            <h3 id="pubDevName" class="text-xl font-bold text-white"></h3>
+            <p id="pubDevHeadline" class="text-xs text-slate-300"></p>
+            <span id="pubDevHandle" class="text-[11px] text-blue-400 mono"></span>
+          </div>
+        </div>
+        <p id="pubDevBio" class="text-xs text-slate-300 mt-4 leading-relaxed"></p>
+        <div id="pubDevSkills" class="flex flex-wrap gap-1.5 mt-3"></div>
+
+        <div class="mt-6 pt-5 border-t border-slate-800">
+          <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Published Agents by This Creator</h4>
+          <div id="pubDevAgents" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- SOCIAL COMMENTS & VERIFIED REVIEWS DRAWER MODAL                       -->
+  <!-- ===================================================================== -->
+  <div id="commentsModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl fade-in flex flex-col max-h-[82vh]">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+        <div>
+          <span class="text-[11px] uppercase tracking-widest text-blue-400 font-semibold">Community & Buyer Reviews</span>
+          <h3 id="commentsModalAgentName" class="text-lg font-bold text-white mt-0.5"></h3>
+        </div>
+        <button type="button" onclick="closeCommentsModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div id="commentsListStream" class="flex-1 overflow-y-auto space-y-3 pr-1 mb-4"></div>
+
+      <form onsubmit="submitAgentComment(event)" class="pt-3 border-t border-slate-800 flex items-center gap-2">
+        <input type="hidden" id="commentsModalAgentId" />
+        <input id="commentTextInput" type="text" required placeholder="Write a comment or review..."
+          class="flex-1 bg-slate-950 border border-slate-800 rounded-full px-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500" />
+        <button type="submit" class="selgo-blue-btn text-white font-semibold text-xs px-5 py-2.5 rounded-full shrink-0 transition">
+          Post
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- LIVE SANDBOX PREVIEW MODAL                                            -->
+  <!-- ===================================================================== -->
+  <div id="sandboxPreviewModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl fade-in">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-5">
+        <div>
+          <span class="text-[11px] uppercase tracking-widest text-blue-400 font-semibold">Live Cloud Sandbox Preview</span>
+          <h3 id="sandboxAgentName" class="text-lg font-bold text-white mt-0.5"></h3>
+        </div>
+        <button type="button" onclick="closeSandboxPreviewModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <form onsubmit="runSandboxPreview(event)" class="space-y-4">
+        <input type="hidden" id="sandboxAgentId" />
+        <div>
+          <label class="text-xs text-slate-400 block mb-1.5">Send a test prompt to see how this agent responds</label>
+          <div class="flex gap-2">
+            <input id="sandboxPromptInput" type="text" required placeholder="Ask a question or give a sample task..."
+              class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500" />
+            <button type="submit" id="sandboxRunBtn" class="selgo-blue-btn text-white font-semibold text-xs px-4 py-2.5 rounded-xl shrink-0 transition">
+              Test Agent
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div id="sandboxOutputBox" class="hidden mt-4 bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
+        <div class="flex items-center justify-between text-[11px] text-blue-400 font-semibold">
+          <span>LIVE AGENT RESPONSE</span>
+          <span id="sandboxSpeedBadge" class="mono text-slate-500"></span>
+        </div>
+        <p id="sandboxReplyText" class="text-xs text-slate-200 leading-relaxed whitespace-pre-line"></p>
+      </div>
+
+      <div class="mt-5 pt-4 border-t border-slate-800 flex items-center justify-between">
+        <span class="text-xs text-slate-400">Want full voice & workspace access?</span>
+        <button type="button" id="sandboxSubscribeCta" class="selgo-blue-btn text-white font-semibold text-xs px-5 py-2 rounded-full transition">
+          Subscribe & Deploy
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MAIN APP SHELL                                                        -->
+  <!-- ===================================================================== -->
+  <div id="appShell" class="hidden min-h-screen flex flex-col">
+
+    <!-- TOP NAVIGATION BAR -->
+    <nav class="h-16 border-b border-slate-800/80 px-6 flex items-center justify-between sticky top-0 bg-[#050811]/95 backdrop-blur-md z-40">
+      <div class="flex items-center gap-7">
+        <button type="button" onclick="switchView('mentor')" class="flex items-center gap-3 group">
+          <svg class="w-8 h-8" viewBox="0 0 100 100" fill="none">
+            <path d="M84 12 C52 22, 16 28, 16 48 C16 60, 34 65, 48 60 L38 52 C29 52, 28 46, 36 42 C48 36, 74 30, 84 12 Z" fill="#0066FF"/>
+            <path d="M16 88 C48 78, 84 72, 84 52 C84 40, 66 35, 52 40 L62 48 C71 48, 72 54, 64 58 C52 64, 26 70, 16 88 Z" fill="#1D4ED8"/>
+          </svg>
+          <div class="h-6 w-[1px] bg-slate-800"></div>
+          <div class="text-left">
+            <div class="font-extrabold tracking-tight text-lg text-white leading-none">Selgo</div>
+            <div class="text-[9px] tracking-[0.14em] uppercase text-blue-400 font-medium mt-0.5">AI Agents • Automated</div>
+          </div>
+        </button>
+
+        <div class="flex items-center gap-1 bg-slate-900 border border-slate-800 p-1 rounded-full text-xs">
+          <button type="button" id="tabMentor" onclick="switchView('mentor')" class="px-4 py-1.5 rounded-full bg-blue-600 text-white font-semibold transition">
+            AI Business Mentor
+          </button>
+          <button type="button" id="tabMarketplace" onclick="switchView('marketplace')" class="px-4 py-1.5 rounded-full text-slate-400 hover:text-white transition">
+            Agent Marketplace
+          </button>
+          <button type="button" id="tabWorkspace" onclick="switchView('workspace')" class="hidden px-4 py-1.5 rounded-full text-blue-400 font-semibold transition">
+            My Business Agents (<span id="navSubCount">0</span>)
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button type="button" id="tabDeveloper" onclick="switchView('developer')"
+          class="text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 px-3.5 py-1.5 rounded-full flex items-center gap-2 transition">
+          <img id="navUserAvatar" src="https://api.dicebear.com/9.x/initials/svg?seed=S&backgroundColor=0f172a" class="w-5 h-5 rounded-full object-cover" />
+          <span id="navProfileLabel">My Creator Profile</span>
+        </button>
+        <button type="button" onclick="logoutAccount()" class="text-xs text-slate-500 hover:text-slate-300 px-2 py-1">
+          Log out
+        </button>
+      </div>
+    </nav>
+
+    <!-- =================================================================== -->
+    <!-- VIEW 1: AI BUSINESS MENTOR                                          -->
+    <!-- =================================================================== -->
+    <main id="viewMentor" class="flex-1 flex flex-col max-w-2xl w-full mx-auto px-6 pt-10 pb-44">
+      <div class="flex items-center justify-between mb-8 gap-4">
+        <div>
+          <div class="text-[11px] uppercase tracking-widest text-blue-400 font-semibold mb-1">Diagnostic Intelligence</div>
+          <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            Selgo AI Business Mentor
+          </h1>
+          <p class="text-sm text-slate-400 mt-1">
+            Type or speak in any language. Selgo understands and responds automatically.
+          </p>
+        </div>
+
+        <button type="button" onclick="startLiveVoiceCall('mentor')"
+          class="shrink-0 h-10 px-4 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700/80 hover:border-blue-500/60 text-slate-100 font-medium text-xs flex items-center gap-2.5 transition group">
+          <svg class="w-4 h-4 text-blue-400 group-hover:scale-110 transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="4" y1="10" x2="4" y2="14"/>
+            <line x1="8" y1="6" x2="8" y2="18"/>
+            <line x1="12" y1="3" x2="12" y2="21"/>
+            <line x1="16" y1="6" x2="16" y2="18"/>
+            <line x1="20" y1="10" x2="20" y2="14"/>
+          </svg>
+          <span>Live</span>
+        </button>
+      </div>
+
+      <div id="chatStream" class="space-y-6 flex-1">
+        <div class="fade-in flex gap-4 items-start">
+          <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0 mt-0.5">S</div>
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-slate-200 leading-relaxed max-w-xl">
+            Welcome to <strong>Selgo — AI Agents, Automated for You</strong>.<br><br>
+            Tell me about your business, what sector you operate in, or what daily bottleneck you want to automate in any language.
+          </div>
+        </div>
+      </div>
+
+      <div class="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-[#050811] via-[#050811]/95 to-transparent pt-6 pb-6 px-6">
+        <div class="max-w-2xl mx-auto">
+          <form onsubmit="sendMentorMessage(event)"
+            class="relative bg-slate-900/95 border border-slate-800/90 focus-within:border-slate-700 rounded-[28px] shadow-2xl flex items-center pl-6 pr-2.5 py-2 transition">
+            <input
+              id="chatInput"
+              type="text"
+              autocomplete="off"
+              placeholder="Ask Selgo Mentor in any language..."
+              class="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 py-2.5 focus:outline-none"
+            />
+            <div class="flex items-center gap-1.5 shrink-0 ml-2">
+              <button type="button" id="mentorMicBtn" onclick="toggleDictation('chatInput', 'mentorMicBtn')"
+                title="Voice input"
+                class="w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800/70 transition">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="2" width="6" height="11" rx="3"/>
+                  <path d="M5 10a7 7 0 0 0 14 0"/>
+                  <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+              </button>
+
+              <button type="submit"
+                title="Send message"
+                class="w-10 h-10 rounded-full bg-[#93C5FD] hover:bg-[#60A5FA] text-slate-950 flex items-center justify-center transition shadow-sm">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5"/>
+                  <polyline points="5 12 12 5 19 12"/>
+                </svg>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+
+    <!-- =================================================================== -->
+    <!-- VIEW 2: FIRST-TIME BRANCHED ONBOARDING + SOCIAL MARKETPLACE FEED    -->
+    <!-- =================================================================== -->
+    <section id="viewMarketplace" class="hidden max-w-4xl w-full mx-auto px-6 py-10 fade-in">
+
+      <div id="marketplaceQuizBox" class="hidden bg-slate-900/80 border border-slate-800 rounded-3xl p-8 mb-10 shadow-2xl">
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-3">
+            <button type="button" id="quizBackBtn" onclick="prevQuizStep()" class="hidden w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"/>
+                <polyline points="12 19 5 12 12 5"/>
+              </svg>
+            </button>
+            <div>
+              <div class="flex items-center gap-2">
+                <span id="quizStepCounter" class="text-[11px] uppercase tracking-widest text-blue-400 font-semibold">Step 1 of 3</span>
+                <span id="quizRouteBadge" class="hidden text-[11px] text-slate-400 mono"></span>
+              </div>
+              <div class="w-44 h-1.5 bg-slate-950 rounded-full overflow-hidden mt-1.5">
+                <div id="quizProgressBar" class="h-full bg-blue-500 w-1/3 transition-all duration-300"></div>
+              </div>
+            </div>
+          </div>
+          <button type="button" onclick="skipMatcherQuizPermanently()" class="text-xs text-slate-400 hover:text-white transition">
+            Skip to Feed
+          </button>
+        </div>
+
+        <div id="quizSlideViewport" class="fade-in">
+          <h2 id="quizQuestionTitle" class="text-2xl sm:text-3xl font-bold text-white tracking-tight"></h2>
+          <p id="quizQuestionSubtitle" class="text-xs sm:text-sm text-slate-400 mt-1 mb-6"></p>
+          <div id="quizChoicesGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        </div>
+      </div>
+
+      <!-- SOCIAL SCROLLABLE AGENT MARKETPLACE FEED -->
+      <div id="marketplaceFeedContainer" class="hidden fade-in">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-5 mb-6 gap-4">
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-[11px] uppercase tracking-widest text-blue-400 font-semibold">Selgo Social Marketplace</span>
+              <span id="activeFilterBadge" class="hidden text-[11px] bg-blue-600/20 border border-blue-500/40 text-blue-300 px-3 py-0.5 rounded-full"></span>
+            </div>
+            <h2 class="text-2xl font-bold tracking-tight text-white mt-1">
+              Matched AI Agents for You
+            </h2>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <button type="button" onclick="reopenMatcherQuiz()" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium px-3.5 py-2 rounded-full transition">
+              Update My Role Route
+            </button>
+            <button type="button" onclick="switchView('developer')" class="selgo-blue-btn text-white font-semibold text-xs px-4 py-2 rounded-full">
+              + Post Agent
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-7 max-w-2xl mx-auto">
+          <div class="relative bg-slate-900/90 border border-slate-800 focus-within:border-blue-500/60 rounded-full flex items-center px-4 py-2">
+            <svg class="w-4 h-4 text-slate-400 mr-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+            </svg>
+            <input id="marketplaceSearchInput" type="text" oninput="renderSocialMarketplaceFeed()"
+              placeholder="Search agents by role, skill, developer, or workflow..."
+              class="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none py-1" />
+          </div>
+        </div>
+
+        <div id="marketplaceEmptyState" class="hidden bg-slate-900/40 border border-slate-800/80 rounded-2xl p-12 text-center max-w-2xl mx-auto">
+          <h3 class="text-lg font-semibold text-white">No Developer Agents Published Yet</h3>
+          <p class="text-sm text-slate-400 mt-2 max-w-md mx-auto">
+            Open your Creator Profile to upload your photo with the camera icon and publish the first AI Agent to the feed.
+          </p>
+          <button type="button" onclick="switchView('developer')" class="mt-5 selgo-blue-btn text-white font-semibold text-xs px-5 py-2.5 rounded-full">
+            Open My Creator Profile
+          </button>
+        </div>
+
+        <div id="marketplaceGrid" class="space-y-6 max-w-2xl mx-auto"></div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- VIEW 3: PERSISTENT BUSINESS WORKSPACE + COMPANY KNOWLEDGE BASE      -->
+    <!-- =================================================================== -->
+    <section id="viewWorkspace" class="hidden max-w-6xl w-full mx-auto px-6 py-8 fade-in">
+      <div class="flex items-center gap-2 overflow-x-auto pb-4 mb-6 border-b border-slate-800" id="mySubSwitcherBar"></div>
+
+      <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 mb-6 gap-4">
+        <div class="flex items-center gap-4">
+          <img id="wsDevAvatar" src="https://api.dicebear.com/9.x/shapes/svg?seed=Agent" class="w-12 h-12 rounded-2xl object-cover border border-slate-700" />
+          <div>
+            <div class="inline-flex items-center gap-2 text-[11px] text-blue-400 font-semibold">
+              <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+              DEPLOYED & ACTIVE ON SELGO CLOUD
+              <span id="wsInvoiceBadge" class="text-slate-500 mono ml-1"></span>
+            </div>
+            <h2 id="wsAgentName" class="text-xl sm:text-2xl font-bold text-white"></h2>
+            <p id="wsBusinessInfo" class="text-xs text-slate-400"></p>
+          </div>
+        </div>
+
+        <button type="button" onclick="startLiveVoiceCall('agent')"
+          class="h-10 px-4 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700/80 hover:border-blue-500/60 text-slate-100 font-medium text-xs flex items-center gap-2.5 transition group self-start md:self-auto">
+          <svg class="w-4 h-4 text-blue-400 group-hover:scale-110 transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="4" y1="10" x2="4" y2="14"/>
+            <line x1="8" y1="6" x2="8" y2="18"/>
+            <line x1="12" y1="3" x2="12" y2="21"/>
+            <line x1="16" y1="6" x2="16" y2="18"/>
+            <line x1="20" y1="10" x2="20" y2="14"/>
+          </svg>
+          <span>Live Voice Call</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- LEFT 7 COLS: DIRECT AGENT CONVERSATION -->
+        <div class="lg:col-span-7 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-[580px]">
+          <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-300">Direct Agent Conversation & Task Execution</span>
+            <span id="wsSpeed" class="text-[11px] text-slate-500 mono">Ready</span>
+          </div>
+
+          <div id="wsChatStream" class="flex-1 overflow-y-auto p-5 space-y-4"></div>
+
+          <div class="p-3.5 border-t border-slate-800/80 bg-slate-950/60 rounded-b-2xl">
+            <form onsubmit="sendWorkspaceAgentMessage(event)"
+              class="bg-slate-900 border border-slate-800 focus-within:border-slate-700 rounded-[28px] flex items-center pl-5 pr-2 py-1.5 transition">
+              <input
+                id="wsChatInput"
+                type="text"
+                autocomplete="off"
+                placeholder="Talk to your deployed agent in any language..."
+                class="flex-1 bg-transparent text-sm text-white placeholder-slate-500 py-2 focus:outline-none"
+              />
+              <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                <button type="button" id="wsMicBtn" onclick="toggleDictation('wsChatInput', 'wsMicBtn')"
+                  title="Voice input"
+                  class="w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800/70 transition">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="2" width="6" height="11" rx="3"/>
+                    <path d="M5 10a7 7 0 0 0 14 0"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                  </svg>
+                </button>
+
+                <button type="submit"
+                  title="Send message"
+                  class="w-10 h-10 rounded-full bg-[#93C5FD] hover:bg-[#60A5FA] text-slate-950 flex items-center justify-center transition shadow-sm">
+                  <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="19" x2="12" y2="5"/>
+                    <polyline points="5 12 12 5 19 12"/>
+                  </svg>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- RIGHT 5 COLS: COMPANY KNOWLEDGE BASE SYNC + LIVE ROI METRICS -->
+        <div class="lg:col-span-5 space-y-4">
+
+          <!-- COMPANY KNOWLEDGE BASE PANEL -->
+          <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-2">
+              <div>
+                <h3 class="text-xs uppercase tracking-wider text-blue-400 font-semibold">Company Knowledge Base</h3>
+                <p class="text-[11px] text-slate-400">Upload a file or paste your pricing, inventory, or SOPs.</p>
+              </div>
+              <label class="text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-full cursor-pointer flex items-center gap-1.5 transition shrink-0">
+                <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <span>Upload File</span>
+                <input type="file" accept=".txt,.csv,.json,.md" onchange="handleKnowledgeFileUpload(event)" class="hidden" />
+              </label>
+            </div>
+
+            <textarea id="wsKnowledgeTextarea" rows="4"
+              placeholder="Paste your company prices, product catalog, schedules, or rules here so your agent knows your exact data..."
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-blue-500 mt-1"></textarea>
+
+            <div class="flex items-center justify-between mt-2.5">
+              <span id="wsKnowledgeStatus" class="text-[11px] text-slate-500">Synced with Agent Brain</span>
+              <button type="button" onclick="saveWorkspaceKnowledgeBase()"
+                class="selgo-blue-btn text-white font-semibold text-xs px-4 py-1.5 rounded-full transition">
+                Sync to Agent Brain
+              </button>
+            </div>
+          </div>
+
+          <!-- LIVE ROI METRICS -->
+          <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+            <h3 class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-3">Live Business ROI Metrics</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
+                <div class="text-[11px] text-slate-400">Tasks Automated</div>
+                <div id="wsTasksCount" class="text-xl font-bold text-white mt-0.5 mono">0</div>
+              </div>
+              <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
+                <div class="text-[11px] text-slate-400">Time Saved</div>
+                <div id="wsTimeSaved" class="text-xl font-bold text-blue-400 mt-0.5 mono">0m</div>
+              </div>
+              <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
+                <div class="text-[11px] text-slate-400">Est. Value Created</div>
+                <div id="wsValueCreated" class="text-lg font-bold text-white mt-0.5 mono">$0</div>
+              </div>
+              <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
+                <div class="text-[11px] text-slate-400">Selgo Security</div>
+                <div class="text-xs font-semibold text-blue-400 mt-1.5 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-blue-500"></span> SHA-256 Verified
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+            <h3 class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2.5">Latest Worker Telemetry</h3>
+            <div id="wsResultCards" class="space-y-2 text-xs text-slate-400">
+              Send a message or speak to your agent to see live execution output.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- VIEW 4: SELGO CREATOR PROFILE + WALLET & PAYOUT WITHDRAWALS         -->
+    <!-- =================================================================== -->
+    <section id="viewDeveloper" class="hidden max-w-4xl w-full mx-auto px-6 py-10 fade-in">
+
+      <div id="devOnboardingBox" class="hidden bg-slate-900/70 border border-slate-800 rounded-2xl p-8 max-w-xl mx-auto">
+        <div class="text-xs uppercase tracking-widest text-blue-400 font-semibold mb-1">One-Time Creator Setup</div>
+        <h2 class="text-2xl font-bold text-white">Set Up Your Selgo Creator Profile</h2>
+        <p class="text-xs text-slate-400 mt-1 mb-6">
+          Set up your creator identity once. Every AI Agent you publish afterward automatically appears under your profile.
+        </p>
+
+        <form onsubmit="saveDeveloperProfile(event)" class="space-y-5">
+          <div class="flex flex-col items-center justify-center py-2">
+            <label for="avatarFileInput" class="relative group cursor-pointer">
+              <img id="devAvatarPreview"
+                src="https://api.dicebear.com/9.x/initials/svg?seed=Creator&backgroundColor=0f172a"
+                alt="Creator Avatar"
+                class="w-24 h-24 rounded-full object-cover border-2 border-slate-700 group-hover:border-blue-500 bg-slate-950 transition shadow-xl" />
+              
+              <div class="absolute inset-0 rounded-full bg-black/55 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+                <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                  <circle cx="12" cy="13" r="3"/>
+                </svg>
+              </div>
+
+              <div class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-blue-600 border-2 border-[#050811] flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                  <circle cx="12" cy="13" r="3"/>
+                </svg>
+              </div>
+              <input id="avatarFileInput" type="file" accept="image/*" onchange="handleAvatarFileUpload(event)" class="hidden" />
+            </label>
+            <span class="text-[11px] text-slate-400 mt-2">Tap the camera to upload your photo</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-slate-400 block mb-1">Display Name</label>
+              <input id="devDisplayName" type="text" required placeholder="e.g., Imran Mohamedbeyan"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 block mb-1">Unique Handle (@username)</label>
+              <input id="devUsername" type="text" required placeholder="e.g., imran_ai"
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500" />
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Professional Headline</label>
+            <input id="devHeadline" type="text" required placeholder="e.g., AI Systems Architect & Co-Founder"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500" />
+          </div>
+
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Bio / About You</label>
+            <textarea id="devBio" rows="3" required placeholder="Tell businesses about your background and the AI systems you build..."
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-blue-500"></textarea>
+          </div>
+
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Core Skills (Comma separated)</label>
+            <input id="devSkills" type="text" required placeholder="e.g., Python, Autonomous Agents, Real Estate AI, Voice Systems"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500" />
+          </div>
+
+          <button type="submit" class="w-full selgo-blue-btn text-white font-semibold text-xs py-3.5 rounded-full transition">
+            Complete Profile Setup
+          </button>
+        </form>
+      </div>
+
+      <!-- PERMANENT SELGO CREATOR PROFILE PAGE -->
+      <div id="devCreatorProfile" class="hidden space-y-8">
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="h-24 bg-gradient-to-r from-blue-900/80 via-slate-900 to-slate-950 border-b border-slate-800/80"></div>
+          <div class="px-7 pb-7">
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between -mt-10 gap-4">
+              <div class="flex items-end gap-4">
+                <img id="liAvatar" src="" class="w-20 h-20 rounded-full object-cover border-4 border-[#050811] bg-slate-900 shadow-xl" />
+                <div class="pb-1">
+                  <h2 id="liName" class="text-xl font-bold text-white"></h2>
+                  <p id="liHeadline" class="text-xs text-slate-300 mt-0.5"></p>
+                  <span id="liHandle" class="text-[11px] text-blue-400 mono"></span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2.5">
+                <button type="button" onclick="openEditProfile()"
+                  class="text-xs text-slate-400 hover:text-white border border-slate-800 px-4 py-2 rounded-full transition">
+                  Edit Profile
+                </button>
+                <button type="button" onclick="togglePostAgentForm()"
+                  class="selgo-blue-btn text-white font-semibold text-xs px-5 py-2.5 rounded-full transition">
+                  + Post New AI Agent
+                </button>
+              </div>
+            </div>
+
+            <p id="liBio" class="text-xs text-slate-300 mt-5 leading-relaxed max-w-2xl"></p>
+            <div id="liSkills" class="flex flex-wrap gap-1.5 mt-4"></div>
+
+            <!-- Creator Financial & Security Ledger Bar -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-5 border-t border-slate-800/80">
+              <div>
+                <div class="text-[11px] text-slate-400">Published Agents</div>
+                <div id="liAgentCount" class="text-lg font-bold text-white mt-0.5 mono">0</div>
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-400">Gross Volume</div>
+                <div id="liGrossSales" class="text-lg font-bold text-slate-200 mt-0.5 mono">$0.00</div>
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-400">Available Balance (75%)</div>
+                <div id="liAvailableBalance" class="text-lg font-bold text-blue-400 mt-0.5 mono">$0.00</div>
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-400">Security Trust Score</div>
+                <div id="liTrust" class="text-lg font-bold text-emerald-400 mt-0.5 mono">100%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- POST NEW AI AGENT COMPOSER -->
+        <div id="postAgentComposer" class="hidden bg-slate-900/80 border border-blue-500/40 rounded-2xl p-7 fade-in">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-5">
+            <div>
+              <h3 class="text-base font-semibold text-white">Post a New Conversational & Task AI Agent</h3>
+              <p class="text-xs text-slate-400">Appears in the Selgo Social Marketplace under your Creator Profile.</p>
+            </div>
+            <button type="button" onclick="togglePostAgentForm()" class="w-8 h-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 flex items-center justify-center">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <form onsubmit="publishNewAgent(event)" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div class="sm:col-span-2">
+                <label class="text-xs text-slate-400 block mb-1">Agent Name</label>
+                <input id="agName" type="text" required placeholder="e.g., CloseFlow Sales & Lead Concierge"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white" />
+              </div>
+              <div>
+                <label class="text-xs text-slate-400 block mb-1">Monthly Subscription (USD)</label>
+                <input id="agPrice" type="number" required min="1" placeholder="49"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs text-slate-400 block mb-1">Target Field / Sector</label>
+                <input id="agIndustry" type="text" required placeholder="e.g., Software Engineering, Data Science, Sales, Real Estate"
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white" />
+              </div>
+              <div>
+                <label class="text-xs text-slate-400 block mb-1">Short Headline Tagline</label>
+                <input id="agTagline" type="text" required placeholder="e.g., Automates daily workflows and client responses 24/7."
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white" />
+              </div>
+            </div>
+
+            <div>
+              <label class="text-xs text-slate-400 block mb-1">Agent Persona & Expertise Instructions (System Prompt)</label>
+              <textarea id="agSystemPrompt" rows="2" required
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white">You are a dedicated AI specialist working inside this business. Give actionable calculations, draft high-converting client responses, and execute tasks accurately.</textarea>
+            </div>
+
+            <div>
+              <label class="text-xs text-slate-400 block mb-1">Full Capabilities Description</label>
+              <textarea id="agDescription" rows="2" required placeholder="Describe everything this agent does for the subscriber..."
+                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white"></textarea>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                <label class="text-xs font-medium text-slate-300">Python `AgentWorker` Logic (or upload `.py`)</label>
+                <div class="flex items-center gap-3">
+                  <label class="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3.5 py-1.5 rounded-full cursor-pointer flex items-center gap-1.5 transition">
+                    <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="17 8 12 3 7 8"/>
+                      <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <span>Upload .py File</span>
+                    <input type="file" accept=".py,.txt" onchange="handlePythonFileUpload(event)" class="hidden" />
+                  </label>
+                  <button type="button" onclick="insertStarterTemplate()" class="text-xs text-blue-400 hover:underline">
+                    + Load Smart AI Worker Template
+                  </button>
+                </div>
+              </div>
+              <textarea id="agCode" rows="7" required placeholder="Click '+ Load Smart AI Worker Template'..."
+                class="w-full bg-black border border-slate-800 rounded-lg p-3 text-xs mono text-blue-300 focus:outline-none"></textarea>
+            </div>
+
+            <button type="submit" class="w-full selgo-blue-btn text-white font-semibold text-xs py-3 rounded-full transition">
+              Verify Security & Publish to Social Feed
+            </button>
+          </form>
+
+          <div id="agDeployStatus" class="hidden mt-4 p-3.5 rounded-xl text-xs whitespace-pre-line"></div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- LEFT 7 COLS: PUBLISHED AGENTS WITH DELETE OPTION -->
+          <div class="lg:col-span-7">
+            <h3 class="text-sm font-semibold text-slate-300 mb-4">AI Agents Posted by You</h3>
+            <div id="liPostedAgentsFeed" class="space-y-3"></div>
+          </div>
+
+          <!-- RIGHT 5 COLS: CREATOR WALLET WITHDRAWAL & SUBSCRIBER LEDGER -->
+          <div class="lg:col-span-5 space-y-6">
+            <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
+              <h3 class="text-xs uppercase tracking-wider text-blue-400 font-semibold mb-1">Creator Payout Wallet</h3>
+              <p class="text-[11px] text-slate-400 mb-4">Withdraw your 75% creator share directly to your bank or mobile wallet.</p>
+
+              <form onsubmit="submitCreatorPayout(event)" class="space-y-3">
+                <div>
+                  <label class="text-[11px] text-slate-400 block mb-1">Payout Method</label>
+                  <select id="payoutMethodInput" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+                    <option value="Telebirr Wallet">Telebirr Wallet</option>
+                    <option value="Commercial Bank (CBE)">Commercial Bank (CBE)</option>
+                    <option value="Chapa Direct Transfer">Chapa Direct Transfer</option>
+                    <option value="International Wire / Wise">International Wire / Wise</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[11px] text-slate-400 block mb-1">Account / Phone / IBAN</label>
+                  <input id="payoutAccountInput" type="text" required placeholder="Enter destination account or phone..."
+                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
+                </div>
+                <button type="submit" class="w-full selgo-blue-btn text-white font-semibold text-xs py-2.5 rounded-full transition">
+                  Withdraw Available Balance
+                </button>
+              </form>
+            </div>
+
+            <div>
+              <h3 class="text-sm font-semibold text-slate-300 mb-3">Recent Business Subscribers (75% Share)</h3>
+              <div id="liSubscriberLedger" class="space-y-2.5 text-xs text-slate-400"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- SUBSCRIBE & MULTI-METHOD PAYMENT CHECKOUT MODAL                     -->
+    <!-- =================================================================== -->
+    <div id="subscribeModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl fade-in">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-5">
+          <div>
+            <span class="text-[11px] uppercase tracking-widest text-blue-400 font-semibold">Selgo Cloud Checkout</span>
+            <h3 id="subModalAgentName" class="text-lg font-semibold text-white mt-0.5"></h3>
+          </div>
+          <button type="button" onclick="closeSubscribeModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <form onsubmit="confirmSubscriptionAndDeploy(event)" class="space-y-4">
+          <input type="hidden" id="subModalAgentId" />
+          <div>
+            <label class="text-xs text-slate-400 block mb-1.5">Your Organization / Workspace Name</label>
+            <input id="subBusinessName" type="text" required placeholder="e.g., Imran Systems"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 block mb-1.5">Primary Goal for This Agent</label>
+            <input id="subBusinessGoal" type="text" required placeholder="e.g., Automate daily operations and workflows"
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white" />
+          </div>
+
+          <!-- Payment Method Selection -->
+          <div>
+            <label class="text-xs text-slate-400 block mb-1.5">Select Payment Method</label>
+            <div class="grid grid-cols-3 gap-2" id="paymentMethodGroup">
+              <button type="button" onclick="selectPaymentMethod('Card', this)"
+                class="pay-method-btn border-2 border-blue-500 bg-blue-600/20 text-white rounded-xl py-2.5 px-2 text-xs font-semibold transition">
+                Card
+              </button>
+              <button type="button" onclick="selectPaymentMethod('Telebirr', this)"
+                class="pay-method-btn border border-slate-800 bg-slate-950 text-slate-300 hover:text-white rounded-xl py-2.5 px-2 text-xs font-medium transition">
+                Telebirr
+              </button>
+              <button type="button" onclick="selectPaymentMethod('Chapa / Bank', this)"
+                class="pay-method-btn border border-slate-800 bg-slate-950 text-slate-300 hover:text-white rounded-xl py-2.5 px-2 text-xs font-medium transition">
+                Chapa / Bank
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2 text-xs">
+            <div class="flex items-center justify-between text-slate-300">
+              <span>Monthly Subscription</span>
+              <span id="subModalPrice" class="text-white font-bold text-sm"></span>
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-800/80">
+              <span>75% Creator Escrow / 25% Selgo Cloud</span>
+              <span class="text-blue-400">Instant Activation</span>
+            </div>
+          </div>
+          <button type="submit" class="w-full selgo-blue-btn text-white font-semibold text-xs py-3.5 rounded-full transition">
+            Complete Payment & Deploy Agent
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MAIN APPLICATION LOGIC -->
+  <script>
+    let currentUser = null;
+    let myDeveloperProfile = null;
+    let mySubscriptions = [];
+    let activeSubscriptionId = null;
+    let activeAgentName = '';
+    let selectedPaymentMethod = 'Card';
+    let uploadedAvatarDataUrl = 'https://api.dicebear.com/9.x/initials/svg?seed=Creator&backgroundColor=0f172a';
+    let memory = { owner_name: null, industry: null, pain_point: null };
+    let history = [];
+    let loadedAgentsById = {};
+    let allMarketplaceAgents = [];
+
+    let currentQuizStep = 1;
+    let quizSelection = {
+      completed: false,
+      role_key: '',
+      role_label: '',
+      need_label: '',
+      context_label: ''
+    };
+
+    const ROOT_ROLES = [
+      { key: "software_engineer", label: "Software Engineer", sub: "Full-stack, backend, cloud architecture & AI engineering" },
+      { key: "data_scientist", label: "Data Scientist & Analyst", sub: "Machine learning, SQL, BI reporting & predictive analytics" },
+      { key: "sales_growth", label: "Sales & Revenue Leader", sub: "Outbound prospecting, deal closing & pipeline automation" },
+      { key: "founder_exec", label: "Founder & Executive", sub: "Building startups, agencies & scaling company operations" },
+      { key: "student_researcher", label: "Student & Researcher", sub: "Academic study, coding labs, STEM & thesis research" },
+      { key: "real_estate", label: "Real Estate & Property", sub: "Brokerage, buyer qualification, leasing & tour scheduling" },
+      { key: "retail_ecommerce", label: "Retail & E-Commerce", sub: "Store inventory, supplier reorders & customer order flow" },
+      { key: "agribusiness", label: "Agribusiness & Poultry", sub: "Flock/livestock health, feed conversion & wholesale supply" }
+    ];
+
+    const ROLE_BRANCH_ROUTES = {
+      software_engineer: {
+        q2_title: "Which engineering workflow do you want an AI Agent to handle first?",
+        q2_sub: "Tailored route for Software Engineers — choose your primary technical bottleneck.",
+        q2_options: [
+          { label: "Automated Code Review & Bug Detection", sub: "Audit pull requests, catch security flaws & refactor code" },
+          { label: "API Architecture & Backend Scaffolding", sub: "Generate FastAPI/Node endpoints, schemas & database models" },
+          { label: "DevOps, CI/CD & Cloud Log Monitoring", sub: "Detect server crashes, optimize containers & automate deploys" },
+          { label: "Automated Unit Testing & QA Suites", sub: "Write high-coverage integration tests across your codebase" }
+        ],
+        q3_title: "What is your primary development stack?",
+        q3_sub: "Final step — Selgo will rank engineering agents built for your stack.",
+        q3_options: [
+          { label: "Python, FastAPI & AI Microservices", sub: "Backend systems, LLMs & data pipelines" },
+          { label: "TypeScript, React & Next.js Full-Stack", sub: "Modern web applications & cloud APIs" },
+          { label: "Cloud Infrastructure, Docker & Kubernetes", sub: "Distributed systems & site reliability" },
+          { label: "Multi-Language Enterprise Repositories", sub: "Large-scale polyglot production systems" }
+        ]
+      },
+      data_scientist: {
+        q2_title: "Which data bottleneck slows your analysis down the most?",
+        q2_sub: "Tailored route for Data Scientists & Analysts — select your core workflow.",
+        q2_options: [
+          { label: "SQL Query Generation & Pipeline Cleaning", sub: "Transform messy tables into clean, validated datasets" },
+          { label: "Automated Executive KPI & BI Reporting", sub: "Generate daily revenue, churn & growth insights automatically" },
+          { label: "Predictive Forecasting & Anomaly Detection", sub: "Spot demand spikes, fraud & operational risks early" },
+          { label: "Unstructured Document & CSV Extraction", sub: "Parse PDFs, invoices & raw logs into structured tables" }
+        ],
+        q3_title: "What type of data do you analyze daily?",
+        q3_sub: "Final step — matching you with specialized data & analytics agents.",
+        q3_options: [
+          { label: "Financial, Revenue & Pricing Data", sub: "P&L ledgers, margins & transaction streams" },
+          { label: "Customer Behavior & Product Telemetry", sub: "User retention, funnels & conversion cohorts" },
+          { label: "Supply Chain, Inventory & Logistics Data", sub: "Stock velocity, lead times & warehouse metrics" },
+          { label: "Scientific & Experimental Datasets", sub: "Research models & statistical benchmarks" }
+        ]
+      },
+      sales_growth: {
+        q2_title: "Where are you losing the most deals in your sales pipeline?",
+        q2_sub: "Tailored route for Sales & Revenue Leaders — pick your #1 revenue priority.",
+        q2_options: [
+          { label: "24/7 Inbound Lead Qualification & Scoring", sub: "Respond in seconds and filter high-intent buyers" },
+          { label: "Outbound Prospecting & Follow-Up Sequences", sub: "Write personalized multi-touch outreach that books calls" },
+          { label: "Objection Handling & Proposal Generation", sub: "Draft tailored quotes, ROI breakdowns & deal terms" },
+          { label: "Automated Calendar Booking & CRM Hygiene", sub: "Keep pipeline stages updated without manual data entry" }
+        ],
+        q3_title: "How do your customers primarily buy from you?",
+        q3_sub: "Final step — matching you with high-converting sales agents.",
+        q3_options: [
+          { label: "High-Ticket B2B & Enterprise Deals", sub: "Multi-stakeholder consultative sales cycles" },
+          { label: "High-Volume Inbound Phone & Voice Calls", sub: "Direct consumer or commercial phone inquiries" },
+          { label: "Digital Self-Serve & Inbound Chat", sub: "Fast-moving online leads & subscriptions" },
+          { label: "Field Sales & Local Territory Accounts", sub: "In-person meetings, site visits & wholesale orders" }
+        ]
+      },
+      founder_exec: {
+        q2_title: "Which department in your company needs an AI teammate first?",
+        q2_sub: "Tailored route for Founders & Executives — choose where to unlock leverage.",
+        q2_options: [
+          { label: "Revenue, Sales & Client Acquisition", sub: "Grow top-line pipeline without hiring a bigger sales team" },
+          { label: "Operations, Fulfillment & Team Workflows", sub: "Eliminate repetitive daily bottlenecks across operations" },
+          { label: "Finance, Invoicing & Cashflow Auditing", sub: "Track unit economics, expenses & overdue receivables" },
+          { label: "24/7 Customer Support & Client Retention", sub: "Resolve client requests instantly by voice and chat" }
+        ],
+        q3_title: "What stage is your organization currently in?",
+        q3_sub: "Final step — ranking autonomous agents built for your scale.",
+        q3_options: [
+          { label: "Early-Stage Startup Building Traction", sub: "Moving fast with a lean founding team" },
+          { label: "Growing SME Scaling Daily Operations", sub: "Standardizing processes across multiple staff" },
+          { label: "Digital Agency Managing Client Accounts", sub: "Delivering automation & results for B2B clients" },
+          { label: "Established Enterprise Optimizing Margins", sub: "Reducing overhead across large departments" }
+        ]
+      },
+      student_researcher: {
+        q2_title: "Which academic or research task do you want an AI Agent to accelerate?",
+        q2_sub: "Tailored route for Students & Researchers — choose your primary study focus.",
+        q2_options: [
+          { label: "STEM Problem Solving (Math, Physics & Chemistry)", sub: "Step-by-step derivations, formulas & exam preparation" },
+          { label: "Coding Projects, Algorithms & Debugging", sub: "Build software projects and master data structures" },
+          { label: "Research Paper Summarization & Citations", sub: "Synthesize complex literature and technical PDFs" },
+          { label: "Technical Writing, Essays & Presentations", sub: "Structure clear, high-scoring reports and books" }
+        ],
+        q3_title: "What is your primary field of study?",
+        q3_sub: "Final step — matching you with academic & research agents.",
+        q3_options: [
+          { label: "Computer Science, AI & Data Science", sub: "Programming, machine learning & systems" },
+          { label: "Natural Sciences, Physics & Engineering", sub: "Mathematics, chemistry, physics & mechanics" },
+          { label: "Business, Leadership & Economics", sub: "Entrepreneurship, finance & management" },
+          { label: "Medicine, Biology & Health Sciences", sub: "Clinical sciences & biotechnology" }
+        ]
+      },
+      real_estate: {
+        q2_title: "Which real estate bottleneck do you want automated first?",
+        q2_sub: "Tailored route for Real Estate Professionals — choose your top priority.",
+        q2_options: [
+          { label: "24/7 Buyer Qualification & Budget Screening", sub: "Filter serious buyers from casual inquiries automatically" },
+          { label: "Automated Property Tour & Viewing Scheduler", sub: "Book on-site visits directly into your calendar" },
+          { label: "Property ROI, Rental Yield & Pricing Analysis", sub: "Compute instant investment numbers for clients" },
+          { label: "Tenant Communications & Lease Follow-Ups", sub: "Automate rent reminders and maintenance requests" }
+        ],
+        q3_title: "What type of properties do you primarily handle?",
+        q3_sub: "Final step — ranking real estate agents for your portfolio.",
+        q3_options: [
+          { label: "Residential Homes & Apartments", sub: "Home buyers, sellers & residential leasing" },
+          { label: "Commercial Offices & Retail Spaces", sub: "Corporate tenants & commercial investors" },
+          { label: "New Developments & Land Sales", sub: "Off-plan projects & construction marketing" },
+          { label: "Property Management & Short-Term Rentals", sub: "Multi-unit operations & guest turnover" }
+        ]
+      },
+      retail_ecommerce: {
+        q2_title: "Which retail or e-commerce operation needs automation first?",
+        q2_sub: "Tailored route for Retail & E-Commerce — select your daily bottleneck.",
+        q2_options: [
+          { label: "Stockout Prevention & Inventory Tracking", sub: "Monitor daily stock depletion and reorder points" },
+          { label: "Automated Customer Order & Delivery Support", sub: "Answer buyer questions and track orders 24/7" },
+          { label: "Supplier Purchase Orders & Cost Auditing", sub: "Compare vendor pricing and automate restocking" },
+          { label: "Product Margin & Promotions Optimization", sub: "Identify best-sellers and dead stock immediately" }
+        ],
+        q3_title: "How do you primarily sell your products?",
+        q3_sub: "Final step — matching you with retail operations agents.",
+        q3_options: [
+          { label: "Physical Retail Storefront or Multi-Branch", sub: "In-store POS, shelf stock & walk-in customers" },
+          { label: "Online E-Commerce & Social Commerce", sub: "Digital catalog, direct-to-consumer & delivery" },
+          { label: "Wholesale & B2B Distribution", sub: "Bulk orders, trade accounts & logistics" }
+        ]
+      },
+      agribusiness: {
+        q2_title: "Which farm or livestock operation do you want an AI Agent to manage?",
+        q2_sub: "Tailored route for Agribusiness & Poultry — choose your operational focus.",
+        q2_options: [
+          { label: "Poultry Feed Conversion (FCR) & Ration Planning", sub: "Optimize daily feed weights and reduce feed waste" },
+          { label: "Flock/Livestock Health & Mortality Monitoring", sub: "Track vaccination schedules, biosecurity & alerts" },
+          { label: "Wholesale Egg, Broiler & Produce Order Tracking", sub: "Manage buyer orders, dispatches & daily pricing" },
+          { label: "Farm Expense, Input Cost & Margin Accounting", sub: "Calculate exact profit per batch or harvest cycle" }
+        ],
+        q3_title: "What is the primary focus of your agricultural operation?",
+        q3_sub: "Final step — ranking agribusiness agents for your farm.",
+        q3_options: [
+          { label: "Commercial Poultry (Layers & Broilers)", sub: "Egg production, hatchery & broiler flocks" },
+          { label: "Livestock, Dairy & Cattle Operations", sub: "Herd nutrition, veterinary logs & yield tracking" },
+          { label: "Crop Farming & Agri-Processing", sub: "Harvest planning, irrigation & commodity sales" }
+        ]
+      }
+    };
+
+    let dictationRecognition = null;
+    let isDictating = false;
+    let liveCallActive = false;
+    let liveCallTarget = 'mentor';
+    let liveCallRecognition = null;
+
+    function selectPaymentMethod(method, btnEl) {
+      selectedPaymentMethod = method;
+      document.querySelectorAll('.pay-method-btn').forEach(function(b) {
+        b.className = 'pay-method-btn border border-slate-800 bg-slate-950 text-slate-300 hover:text-white rounded-xl py-2.5 px-2 text-xs font-medium transition';
+      });
+      btnEl.className = 'pay-method-btn border-2 border-blue-500 bg-blue-600/20 text-white rounded-xl py-2.5 px-2 text-xs font-semibold transition';
+    }
+
+    function hasCompletedOnboarding() {
+      if (quizSelection && quizSelection.completed) return true;
+      if (currentUser && currentUser.onboarding && currentUser.onboarding.completed) {
+        quizSelection = Object.assign({}, currentUser.onboarding);
+        return true;
+      }
+      const savedLocal = localStorage.getItem('selgo_onboarding_profile');
+      if (savedLocal) {
+        try {
+          const parsed = JSON.parse(savedLocal);
+          if (parsed && parsed.completed) {
+            quizSelection = parsed;
+            return true;
+          }
+        } catch (e) {}
+      }
+      return false;
+    }
+
+    async function persistOnboardingPermanently() {
+      quizSelection.completed = true;
+      localStorage.setItem('selgo_onboarding_profile', JSON.stringify(quizSelection));
+      if (currentUser) {
+        currentUser.onboarding = Object.assign({}, quizSelection);
+      }
+      if (window.authToken) {
+        try {
+          await fetch('/api/v1/auth/onboarding', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + window.authToken
+            },
+            body: JSON.stringify({
+              role_key: quizSelection.role_key || '',
+              role_label: quizSelection.role_label || '',
+              need_label: quizSelection.need_label || '',
+              context_label: quizSelection.context_label || ''
+            })
+          });
+        } catch (e) {}
+      }
+    }
+
+    function renderCurrentQuizStep() {
+      document.getElementById('quizStepCounter').innerText = 'Step ' + currentQuizStep + ' of 3';
+      document.getElementById('quizProgressBar').style.width = ((currentQuizStep / 3) * 100) + '%';
+      document.getElementById('quizBackBtn').classList.toggle('hidden', currentQuizStep === 1);
+
+      const routeBadge = document.getElementById('quizRouteBadge');
+      if (currentQuizStep > 1 && quizSelection.role_label) {
+        routeBadge.innerText = '• ' + quizSelection.role_label + ' Route';
+        routeBadge.classList.remove('hidden');
+      } else {
+        routeBadge.classList.add('hidden');
+      }
+
+      const viewport = document.getElementById('quizSlideViewport');
+      viewport.classList.remove('fade-in');
+      void viewport.offsetWidth;
+      viewport.classList.add('fade-in');
+
+      const grid = document.getElementById('quizChoicesGrid');
+
+      if (currentQuizStep === 1) {
+        document.getElementById('quizQuestionTitle').innerText = 'What is your job or primary field?';
+        document.getElementById('quizQuestionSubtitle').innerText =
+          'Asked once for first-time visitors. Your next questions will branch specifically for the role you choose.';
+
+        grid.innerHTML = ROOT_ROLES.map(function(r) {
+          const selected = quizSelection.role_key === r.key;
+          return `
+            <button type="button" onclick="selectRoleStep1('${r.key}', '${escapeHtml(r.label)}')"
+              class="group text-left bg-slate-950 hover:bg-slate-900/90 border ${selected ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-800/90 hover:border-blue-500/60'} rounded-2xl px-5 py-4 flex items-center justify-between gap-4 transition-all duration-150">
+              <div>
+                <div class="text-sm font-semibold text-white group-hover:text-blue-400 transition">${escapeHtml(r.label)}</div>
+                <div class="text-xs text-slate-400 mt-1 leading-relaxed">${escapeHtml(r.sub)}</div>
+              </div>
+              <div class="w-7 h-7 rounded-full bg-slate-900 group-hover:bg-blue-600 text-slate-400 group-hover:text-white flex items-center justify-center shrink-0 transition">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </div>
+            </button>
+          `;
+        }).join('');
+        return;
+      }
+
+      const route = ROLE_BRANCH_ROUTES[quizSelection.role_key] || ROLE_BRANCH_ROUTES.founder_exec;
+
+      if (currentQuizStep === 2) {
+        document.getElementById('quizQuestionTitle').innerText = route.q2_title;
+        document.getElementById('quizQuestionSubtitle').innerText = route.q2_sub;
+        grid.innerHTML = route.q2_options.map(function(opt) {
+          const selected = quizSelection.need_label === opt.label;
+          return `
+            <button type="button" onclick="selectBranchStep2('${escapeHtml(opt.label)}')"
+              class="group text-left bg-slate-950 hover:bg-slate-900/90 border ${selected ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-800/90 hover:border-blue-500/60'} rounded-2xl px-5 py-4 flex items-center justify-between gap-4 transition-all duration-150">
+              <div>
+                <div class="text-sm font-semibold text-white group-hover:text-blue-400 transition">${escapeHtml(opt.label)}</div>
+                <div class="text-xs text-slate-400 mt-1 leading-relaxed">${escapeHtml(opt.sub)}</div>
+              </div>
+              <div class="w-7 h-7 rounded-full bg-slate-900 group-hover:bg-blue-600 text-slate-400 group-hover:text-white flex items-center justify-center shrink-0 transition">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </div>
+            </button>
+          `;
+        }).join('');
+        return;
+      }
+
+      if (currentQuizStep === 3) {
+        document.getElementById('quizQuestionTitle').innerText = route.q3_title;
+        document.getElementById('quizQuestionSubtitle').innerText = route.q3_sub;
+        grid.innerHTML = route.q3_options.map(function(opt) {
+          const selected = quizSelection.context_label === opt.label;
+          return `
+            <button type="button" onclick="selectBranchStep3('${escapeHtml(opt.label)}')"
+              class="group text-left bg-slate-950 hover:bg-slate-900/90 border ${selected ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-800/90 hover:border-blue-500/60'} rounded-2xl px-5 py-4 flex items-center justify-between gap-4 transition-all duration-150">
+              <div>
+                <div class="text-sm font-semibold text-white group-hover:text-blue-400 transition">${escapeHtml(opt.label)}</div>
+                <div class="text-xs text-slate-400 mt-1 leading-relaxed">${escapeHtml(opt.sub)}</div>
+              </div>
+              <div class="w-7 h-7 rounded-full bg-slate-900 group-hover:bg-blue-600 text-slate-400 group-hover:text-white flex items-center justify-center shrink-0 transition">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </div>
+            </button>
+          `;
+        }).join('');
+      }
+    }
+
+    function selectRoleStep1(roleKey, roleLabel) {
+      quizSelection.role_key = roleKey;
+      quizSelection.role_label = roleLabel;
+      currentQuizStep = 2;
+      renderCurrentQuizStep();
+    }
+
+    function selectBranchStep2(needLabel) {
+      quizSelection.need_label = needLabel;
+      currentQuizStep = 3;
+      renderCurrentQuizStep();
+    }
+
+    async function selectBranchStep3(contextLabel) {
+      quizSelection.context_label = contextLabel;
+      await persistOnboardingPermanently();
+      showMarketplaceFeedView();
+    }
+
+    function prevQuizStep() {
+      if (currentQuizStep > 1) {
+        currentQuizStep -= 1;
+        renderCurrentQuizStep();
+      }
+    }
+
+    async function skipMatcherQuizPermanently() {
+      await persistOnboardingPermanently();
+      showMarketplaceFeedView();
+    }
+
+    function showMarketplaceFeedView() {
+      document.getElementById('marketplaceQuizBox').classList.add('hidden');
+      document.getElementById('marketplaceFeedContainer').classList.remove('hidden');
+
+      const badge = document.getElementById('activeFilterBadge');
+      const parts = [quizSelection.role_label, quizSelection.need_label].filter(Boolean);
+      if (parts.length > 0) {
+        badge.innerText = parts.join(' • ');
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+      renderSocialMarketplaceFeed();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function reopenMatcherQuiz() {
+      currentQuizStep = 1;
+      document.getElementById('marketplaceFeedContainer').classList.add('hidden');
+      document.getElementById('marketplaceQuizBox').classList.remove('hidden');
+      renderCurrentQuizStep();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function showEmailNotificationToast(notice) {
+      if (!notice) return;
+      const toast = document.getElementById('emailToast');
+      document.getElementById('emailToastDelivery').innerText = notice.delivery || 'Email Notification Sent';
+      document.getElementById('emailToastSubject').innerText = notice.subject || 'Selgo Account Alert';
+      document.getElementById('emailToastBody').innerText = 'To: ' + notice.to + '\n\n' + notice.body;
+      toast.classList.remove('hidden');
+      setTimeout(function() {
+        toast.classList.add('hidden');
+      }, 12000);
+    }
+
+    window.addEventListener('DOMContentLoaded', async function() {
+      if (window.authToken) {
+        try {
+          const res = await fetch('/api/v1/auth/me', {
+            headers: { 'Authorization': 'Bearer ' + window.authToken }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            enterAppWithSession(data.user, data.developer_profile, data.subscriptions || []);
+            return;
+          } else {
+            localStorage.removeItem('selgo_auth_token');
+            window.authToken = null;
+          }
+        } catch (err) {}
+      }
+      document.getElementById('authGate').classList.remove('hidden');
+      document.getElementById('appShell').classList.add('hidden');
+    });
+
+    async function submitAuthForm(event) {
+      event.preventDefault();
+      const errBox = document.getElementById('authErrorBox');
+      errBox.classList.add('hidden');
+
+      const email = document.getElementById('authEmail').value;
+      const password = document.getElementById('authPassword').value;
+      const fullName = document.getElementById('authFullName').value || email.split('@')[0];
+
+      const url = window.authMode === 'signup' ? '/api/v1/auth/signup' : '/api/v1/auth/login';
+      const body = window.authMode === 'signup'
+        ? { full_name: fullName, email: email, password: password }
+        : { email: email, password: password };
+
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errBox.innerText = data.detail || 'Authentication failed.';
+          errBox.classList.remove('hidden');
+          if (String(data.detail || '').toLowerCase().includes('already exists')) {
+            setTimeout(function() { window.toggleAuthMode('login'); }, 1400);
+          }
+          return;
+        }
+        window.authToken = data.token;
+        localStorage.setItem('selgo_auth_token', window.authToken);
+        if (data.email_notification) {
+          showEmailNotificationToast(data.email_notification);
+        }
+        enterAppWithSession(data.user, data.developer_profile, data.subscriptions || []);
+      } catch (err) {
+        errBox.innerText = 'Could not reach Selgo server. Make sure uvicorn is running.';
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    async function sendRecoveryCode() {
+      const email = document.getElementById('recoverEmail').value.trim();
+      const statusBox = document.getElementById('recoverStatusBox');
+      statusBox.classList.remove('hidden');
+      if (!email) {
+        statusBox.className = 'text-xs p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300';
+        statusBox.innerText = 'Please enter your email address first.';
+        return;
+      }
+
+      const res = await fetch('/api/v1/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('recoverStep2Box').classList.remove('hidden');
+        statusBox.className = 'text-xs p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300';
+        statusBox.innerText = data.message;
+        if (data.email_notification) {
+          showEmailNotificationToast(data.email_notification);
+        }
+      } else {
+        statusBox.className = 'text-xs p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300';
+        statusBox.innerText = data.detail || 'Account not found.';
+      }
+    }
+
+    async function confirmPasswordReset() {
+      const email = document.getElementById('recoverEmail').value.trim();
+      const code = document.getElementById('recoverCodeInput').value.trim();
+      const newPassword = document.getElementById('recoverNewPassword').value;
+      const statusBox = document.getElementById('recoverStatusBox');
+      statusBox.classList.remove('hidden');
+
+      const res = await fetch('/api/v1/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email,
+          recovery_code: code,
+          new_password: newPassword
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        window.authToken = data.token;
+        localStorage.setItem('selgo_auth_token', window.authToken);
+        if (data.email_notification) {
+          showEmailNotificationToast(data.email_notification);
+        }
+        enterAppWithSession(data.user, data.developer_profile, data.subscriptions || []);
+      } else {
+        statusBox.className = 'text-xs p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300';
+        statusBox.innerText = data.detail || 'Could not reset password.';
+      }
+    }
+
+    function enterAppWithSession(user, devProfile, subscriptions) {
+      currentUser = user;
+      myDeveloperProfile = devProfile;
+      mySubscriptions = subscriptions || [];
+      memory.owner_name = user.full_name.split(' ')[0];
+
+      if (user.onboarding && user.onboarding.completed) {
+        quizSelection = Object.assign({}, user.onboarding);
+        localStorage.setItem('selgo_onboarding_profile', JSON.stringify(quizSelection));
+      }
+
+      document.getElementById('authGate').classList.add('hidden');
+      document.getElementById('appShell').classList.remove('hidden');
+
+      document.getElementById('devDisplayName').value = user.full_name;
+      document.getElementById('devUsername').value = user.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_');
+
+      syncSubscriptionsNavAndWorkspace();
+      syncDeveloperView();
+      loadMarketplace();
+    }
+
+    function logoutAccount() {
+      localStorage.removeItem('selgo_auth_token');
+      window.authToken = null;
+      currentUser = null;
+      myDeveloperProfile = null;
+      mySubscriptions = [];
+      document.getElementById('appShell').classList.add('hidden');
+      document.getElementById('authGate').classList.remove('hidden');
+      window.toggleAuthMode('login');
+    }
+
+    function switchView(view) {
+      document.getElementById('viewMentor').classList.toggle('hidden', view !== 'mentor');
+      document.getElementById('viewMarketplace').classList.toggle('hidden', view !== 'marketplace');
+      document.getElementById('viewWorkspace').classList.toggle('hidden', view !== 'workspace');
+      document.getElementById('viewDeveloper').classList.toggle('hidden', view !== 'developer');
+
+      document.getElementById('tabMentor').className = view === 'mentor'
+        ? 'px-4 py-1.5 rounded-full bg-blue-600 text-white font-semibold transition'
+        : 'px-4 py-1.5 rounded-full text-slate-400 hover:text-white transition';
+      document.getElementById('tabMarketplace').className = view === 'marketplace'
+        ? 'px-4 py-1.5 rounded-full bg-blue-600 text-white font-semibold transition'
+        : 'px-4 py-1.5 rounded-full text-slate-400 hover:text-white transition';
+
+      if (view === 'marketplace') {
+        if (!hasCompletedOnboarding()) {
+          currentQuizStep = 1;
+          document.getElementById('marketplaceQuizBox').classList.remove('hidden');
+          document.getElementById('marketplaceFeedContainer').classList.add('hidden');
+          renderCurrentQuizStep();
+        } else {
+          showMarketplaceFeedView();
+        }
+        loadMarketplace();
+      }
+      if (view === 'developer') syncDeveloperView();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function computeAgentMatchScore(ag) {
+      if (!quizSelection.role_label && !quizSelection.need_label && !memory.industry) return null;
+      const text = (ag.name + ' ' + ag.industry + ' ' + ag.tagline + ' ' + ag.description).toLowerCase();
+      let score = 84;
+      const roleWords = (quizSelection.role_label || memory.industry || '').toLowerCase().split(/\W+/);
+      const needWords = (quizSelection.need_label || quizSelection.context_label || memory.pain_point || '').toLowerCase().split(/\W+/);
+
+      roleWords.forEach(function(w) {
+        if (w.length > 2 && text.includes(w)) score += 7;
+      });
+      needWords.forEach(function(w) {
+        if (w.length > 2 && text.includes(w)) score += 4;
+      });
+      return Math.min(99, score);
+    }
+
+    async function loadMarketplace() {
+      const res = await fetch('/api/v1/marketplace/agents', {
+        headers: window.authToken ? { 'Authorization': 'Bearer ' + window.authToken } : {}
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      allMarketplaceAgents = data.agents || [];
+      renderSocialMarketplaceFeed();
+    }
+
+    // =========================================================================
+    // SOCIAL FEED RENDERER WITH VECTOR HEART, SAVE, BOOST & COMMENTS
+    // =========================================================================
+    function renderSocialMarketplaceFeed() {
+      const grid = document.getElementById('marketplaceGrid');
+      const empty = document.getElementById('marketplaceEmptyState');
+      const searchInput = document.getElementById('marketplaceSearchInput');
+      const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+      grid.innerHTML = '';
+      loadedAgentsById = {};
+
+      if (!allMarketplaceAgents || allMarketplaceAgents.length === 0) {
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+
+      let filtered = allMarketplaceAgents.filter(function(ag) {
+        if (!query) return true;
+        const hay = (ag.name + ' ' + ag.industry + ' ' + ag.tagline + ' ' + ag.description + ' ' + ag.developer.display_name).toLowerCase();
+        return hay.includes(query);
+      });
+
+      const scoredAgents = filtered.map(function(ag) {
+        return Object.assign({}, ag, { matchScore: computeAgentMatchScore(ag) });
+      });
+
+      scoredAgents.sort(function(a, b) {
+        if (b.matchScore && a.matchScore && b.matchScore !== a.matchScore) {
+          return b.matchScore - a.matchScore;
+        }
+        return (b.likes_count || 0) - (a.likes_count || 0);
+      });
+
+      scoredAgents.forEach(function(ag) {
+        loadedAgentsById[ag.agent_id] = ag;
+        const matchPill = ag.matchScore ? `
+          <span class="text-[11px] font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 px-3 py-1 rounded-full">
+            ${ag.matchScore}% Match
+          </span>
+        ` : '';
+
+        const isLiked = Boolean(ag.user_liked);
+        const heartFill = isLiked ? '#FE2C55' : 'none';
+        const heartStroke = isLiked ? '#FE2C55' : 'currentColor';
+        const heartTextClass = isLiked ? 'text-[#FE2C55] border-[#FE2C55]/40 bg-[#FE2C55]/10' : 'text-slate-300 border-slate-800 bg-slate-950 hover:border-slate-700';
+
+        const card = document.createElement('article');
+        card.className = 'bg-slate-900/75 border border-slate-800/90 hover:border-blue-500/40 rounded-3xl p-6 shadow-xl transition fade-in';
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <button type="button" onclick="openPublicDeveloperModal('${escapeHtml(ag.developer.username)}')"
+              class="flex items-center gap-3 text-left group">
+              <img src="${ag.developer.avatar_url}" alt="${escapeHtml(ag.developer.display_name)}" class="w-11 h-11 rounded-full object-cover border border-slate-700 group-hover:border-blue-400 transition" />
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-sm font-bold text-white group-hover:text-blue-400 transition">${escapeHtml(ag.developer.display_name)}</span>
+                  <span class="text-[11px] text-blue-400 mono">@${escapeHtml(ag.developer.username)}</span>
+                </div>
+                <div class="text-xs text-slate-400">${escapeHtml(ag.developer.headline)}</div>
+              </div>
+            </button>
+
+            <div class="flex items-center gap-2">
+              ${matchPill}
+              <span class="text-[11px] uppercase tracking-wider text-blue-400 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full font-semibold">
+                ${escapeHtml(ag.industry)}
+              </span>
+            </div>
+          </div>
+
+          <div class="bg-slate-950/75 border border-slate-800/80 rounded-2xl p-5 mb-4">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h3 class="text-lg font-bold text-white">${escapeHtml(ag.name)}</h3>
+                <p class="text-xs text-blue-300 font-medium mt-1">${escapeHtml(ag.tagline)}</p>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="text-xl font-extrabold text-white">$${ag.monthly_price_usd}</span>
+                <span class="text-[11px] text-slate-500 block">/month</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-300 mt-3 leading-relaxed">${escapeHtml(ag.description)}</p>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div class="flex items-center gap-2">
+              <!-- TikTok Vector Heart Like Button -->
+              <button type="button" onclick="reactToAgent(${ag.agent_id}, 'like')"
+                id="likeBtn-${ag.agent_id}"
+                class="${heartTextClass} border rounded-full px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5 transition">
+                <svg id="likeSvg-${ag.agent_id}" class="w-4 h-4 transition-transform" viewBox="0 0 24 24" fill="${heartFill}" stroke="${heartStroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                <span id="likeCount-${ag.agent_id}">${ag.likes_count || 0}</span>
+              </button>
+
+              <!-- Vector Comment / Review Button -->
+              <button type="button" onclick="openCommentsModal(${ag.agent_id})"
+                title="Comments & Verified Reviews"
+                class="bg-slate-950 hover:border-blue-500/40 border border-slate-800 rounded-full px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-white flex items-center gap-1.5 transition">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span id="commentCount-${ag.agent_id}">${ag.comments_count || 0}</span>
+              </button>
+
+              <!-- Vector Bookmark Button -->
+              <button type="button" onclick="reactToAgent(${ag.agent_id}, 'fire')"
+                title="Save Agent"
+                class="bg-slate-950 hover:border-amber-500/40 border border-slate-800 rounded-full px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-amber-400 flex items-center gap-1.5 transition">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
+                </svg>
+                <span id="fireCount-${ag.agent_id}">${ag.fire_count || 0}</span>
+              </button>
+
+              <!-- Vector Boost Button -->
+              <button type="button" onclick="reactToAgent(${ag.agent_id}, 'rocket')"
+                title="Boost Agent"
+                class="bg-slate-950 hover:border-blue-500/40 border border-slate-800 rounded-full px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-blue-400 flex items-center gap-1.5 transition">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                  <polyline points="16 6 12 2 8 6"/>
+                  <line x1="12" y1="2" x2="12" y2="15"/>
+                </svg>
+                <span id="rocketCount-${ag.agent_id}">${ag.rocket_count || 0}</span>
+              </button>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="openSandboxPreviewModal(${ag.agent_id})"
+                class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-xs px-4 py-2.5 rounded-full transition">
+                Preview Agent
+              </button>
+              <button type="button" onclick="openSubscribeModalById(${ag.agent_id})"
+                class="selgo-blue-btn text-white font-semibold text-xs px-5 py-2.5 rounded-full shadow-md shadow-blue-600/20 transition">
+                Subscribe & Talk
+              </button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    async function openCommentsModal(agentId) {
+      const ag = loadedAgentsById[agentId];
+      if (!ag) return;
+      document.getElementById('commentsModalAgentId').value = agentId;
+      document.getElementById('commentsModalAgentName').innerText = ag.name;
+      document.getElementById('commentsModal').classList.remove('hidden');
+
+      const res = await fetch('/api/v1/agents/' + agentId + '/comments');
+      if (res.ok) {
+        const data = await res.json();
+        renderCommentsList(data.comments || []);
+      }
+    }
+
+    function closeCommentsModal() {
+      document.getElementById('commentsModal').classList.add('hidden');
+    }
+
+    function renderCommentsList(comments) {
+      const box = document.getElementById('commentsListStream');
+      if (!comments || comments.length === 0) {
+        box.innerHTML = '<div class="text-center text-xs text-slate-500 py-8">No reviews yet. Be the first to post feedback on this agent.</div>';
+        return;
+      }
+      box.innerHTML = comments.map(function(c) {
+        const badge = c.is_verified_subscriber ? `
+          <span class="text-[10px] bg-blue-500/15 border border-blue-500/30 text-blue-400 px-2 py-0.5 rounded-full font-semibold">
+            Verified Subscriber
+          </span>
+        ` : '';
+        return `
+          <div class="bg-slate-950 border border-slate-800/90 rounded-2xl p-3.5">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="text-xs font-bold text-white">${escapeHtml(c.author_name)}</span>
+              ${badge}
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">${escapeHtml(c.content)}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function submitAgentComment(event) {
+      event.preventDefault();
+      const agentId = parseInt(document.getElementById('commentsModalAgentId').value, 10);
+      const input = document.getElementById('commentTextInput');
+      const content = input.value.trim();
+      if (!content) return;
+
+      const res = await fetch('/api/v1/agents/' + agentId + '/comments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + window.authToken
+        },
+        body: JSON.stringify({ content: content })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        input.value = '';
+        renderCommentsList(data.comments || []);
+        const countSpan = document.getElementById('commentCount-' + agentId);
+        if (countSpan) countSpan.innerText = (data.comments || []).length;
+      } else {
+        alert(data.detail || 'Could not post comment.');
+      }
+    }
+
+    function openSandboxPreviewModal(agentId) {
+      const ag = loadedAgentsById[agentId];
+      if (!ag) return;
+      document.getElementById('sandboxAgentId').value = ag.agent_id;
+      document.getElementById('sandboxAgentName').innerText = ag.name;
+      document.getElementById('sandboxPromptInput').value = '';
+      document.getElementById('sandboxOutputBox').classList.add('hidden');
+      document.getElementById('sandboxSubscribeCta').onclick = function() {
+        closeSandboxPreviewModal();
+        openSubscribeModalById(ag.agent_id);
+      };
+      document.getElementById('sandboxPreviewModal').classList.remove('hidden');
+    }
+
+    function closeSandboxPreviewModal() {
+      document.getElementById('sandboxPreviewModal').classList.add('hidden');
+    }
+
+    async function runSandboxPreview(event) {
+      event.preventDefault();
+      const agentId = parseInt(document.getElementById('sandboxAgentId').value, 10);
+      const prompt = document.getElementById('sandboxPromptInput').value.trim();
+      if (!prompt) return;
+
+      const btn = document.getElementById('sandboxRunBtn');
+      btn.innerText = 'Running...';
+
+      const res = await fetch('/api/v1/agents/preview-sandbox', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + window.authToken
+        },
+        body: JSON.stringify({ agent_id: agentId, sample_prompt: prompt })
+      });
+      const data = await res.json();
+      btn.innerText = 'Test Agent';
+
+      const box = document.getElementById('sandboxOutputBox');
+      box.classList.remove('hidden');
+      if (res.ok) {
+        document.getElementById('sandboxSpeedBadge').innerText = data.execution_speed_ms + ' ms';
+        document.getElementById('sandboxReplyText').innerText = data.agent_reply;
+      } else {
+        document.getElementById('sandboxReplyText').innerText = String(data.detail || 'Preview error.');
+      }
+    }
+
+    async function reactToAgent(agentId, reactionType) {
+      const res = await fetch('/api/v1/agents/' + agentId + '/react', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + window.authToken
+        },
+        body: JSON.stringify({ reaction_type: reactionType })
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+
+      const target = allMarketplaceAgents.find(function(a) { return a.agent_id === agentId; });
+      if (target) {
+        target.likes_count = data.likes_count;
+        target.fire_count = data.fire_count;
+        target.rocket_count = data.rocket_count;
+        target.user_liked = data.user_liked;
+      }
+
+      const likeCountEl = document.getElementById('likeCount-' + agentId);
+      const fireCountEl = document.getElementById('fireCount-' + agentId);
+      const rocketCountEl = document.getElementById('rocketCount-' + agentId);
+      const likeBtnEl = document.getElementById('likeBtn-' + agentId);
+      const likeSvgEl = document.getElementById('likeSvg-' + agentId);
+
+      if (likeCountEl) likeCountEl.innerText = data.likes_count;
+      if (fireCountEl) fireCountEl.innerText = data.fire_count;
+      if (rocketCountEl) rocketCountEl.innerText = data.rocket_count;
+
+      if (likeBtnEl && likeSvgEl) {
+        const liked = Boolean(data.user_liked);
+        likeSvgEl.setAttribute('fill', liked ? '#FE2C55' : 'none');
+        likeSvgEl.setAttribute('stroke', liked ? '#FE2C55' : 'currentColor');
+        likeSvgEl.classList.remove('heart-pop');
+        void likeSvgEl.offsetWidth;
+        likeSvgEl.classList.add('heart-pop');
+
+        likeBtnEl.className = (liked
+          ? 'text-[#FE2C55] border-[#FE2C55]/40 bg-[#FE2C55]/10'
+          : 'text-slate-300 border-slate-800 bg-slate-950 hover:border-slate-700') +
+          ' border rounded-full px-3.5 py-2 text-xs font-semibold flex items-center gap-1.5 transition';
+      }
+    }
+
+    // =========================================================================
+    // VOICE DICTATION & LIVE VOICE CALL
+    // =========================================================================
+    function toggleDictation(inputId, btnId) {
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRec) {
+        alert('Voice recognition requires Google Chrome or Microsoft Edge.');
+        return;
+      }
+
+      const btn = document.getElementById(btnId);
+      const inputEl = document.getElementById(inputId);
+
+      if (isDictating && dictationRecognition) {
+        dictationRecognition.stop();
+        isDictating = false;
+        btn.className = 'w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800/70 transition';
+        return;
+      }
+
+      dictationRecognition = new SpeechRec();
+      dictationRecognition.interimResults = true;
+      dictationRecognition.continuous = false;
+
+      const startingText = inputEl.value ? inputEl.value + ' ' : '';
+      isDictating = true;
+      btn.className = 'w-10 h-10 rounded-full flex items-center justify-center bg-rose-500/20 text-rose-400 ring-2 ring-rose-500/50 animate-pulse transition';
+
+      dictationRecognition.onresult = function(event) {
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        inputEl.value = startingText + transcript;
+      };
+
+      dictationRecognition.onend = function() {
+        isDictating = false;
+        btn.className = 'w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800/70 transition';
+        inputEl.focus();
+      };
+
+      dictationRecognition.start();
+    }
+
+    function startLiveVoiceCall(targetMode) {
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRec) {
+        alert('Live Voice mode requires Google Chrome or Microsoft Edge.');
+        return;
+      }
+
+      liveCallTarget = targetMode;
+      liveCallActive = true;
+
+      document.getElementById('liveVoiceOverlay').classList.remove('hidden');
+      if (targetMode === 'agent' && activeAgentName) {
+        document.getElementById('liveVoiceTitle').innerText = 'Live Call with ' + activeAgentName;
+        document.getElementById('liveVoiceSubtitle').innerText = 'Speaking directly to your deployed business agent';
+      } else {
+        document.getElementById('liveVoiceTitle').innerText = 'Selgo AI Business Mentor — Live Voice';
+        document.getElementById('liveVoiceSubtitle').innerText = 'AI Agents • Automated for You';
+      }
+
+      beginLiveVoiceListening();
+    }
+
+    function beginLiveVoiceListening() {
+      if (!liveCallActive) return;
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (liveCallRecognition) {
+        try { liveCallRecognition.stop(); } catch (e) {}
+      }
+
+      liveCallRecognition = new SpeechRec();
+      liveCallRecognition.interimResults = true;
+      liveCallRecognition.continuous = false;
+
+      const orb = document.getElementById('liveVoiceOrb');
+      const badge = document.getElementById('liveVoiceStateBadge');
+      const transcriptEl = document.getElementById('liveVoiceTranscript');
+
+      orb.className = 'w-40 h-40 rounded-full bg-gradient-to-tr from-blue-600 via-blue-400 to-indigo-600 flex items-center justify-center cursor-pointer orb-listening transition-all';
+      badge.innerText = 'Listening to you...';
+      badge.className = 'mt-8 text-xs uppercase tracking-widest text-blue-400 font-semibold';
+
+      let finalSpokenText = '';
+
+      liveCallRecognition.onresult = function(event) {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const piece = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalSpokenText += piece;
+          } else {
+            interim += piece;
+          }
+        }
+        transcriptEl.innerText = '"' + (finalSpokenText || interim) + '"';
+      };
+
+      liveCallRecognition.onend = async function() {
+        if (!liveCallActive) return;
+        const cleanSpoken = finalSpokenText.trim();
+        if (!cleanSpoken) {
+          if (liveCallActive) {
+            try { liveCallRecognition.start(); } catch (e) {}
+          }
+          return;
+        }
+
+        badge.innerText = 'Thinking...';
+        badge.className = 'mt-8 text-xs uppercase tracking-widest text-amber-400 font-semibold';
+
+        if (liveCallTarget === 'mentor') {
+          await processLiveMentorTurn(cleanSpoken);
+        } else {
+          await processLiveAgentTurn(cleanSpoken);
+        }
+      };
+
+      try {
+        liveCallRecognition.start();
+      } catch (e) {}
+    }
+
+    async function processLiveMentorTurn(spokenText) {
+      appendChatBubble('user', spokenText, false);
+      try {
+        const res = await fetch('/api/v1/mentor/interview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_message: spokenText,
+            memory: memory,
+            history: history,
+            voice_mode: true
+          })
+        });
+        const data = await res.json();
+        memory = data.memory || memory;
+        history.push({ role: 'user', content: spokenText });
+        history.push({ role: 'assistant', content: data.ai_reply });
+
+        appendChatBubble('assistant', data.ai_reply, data.can_show_marketplace_button);
+        speakOutLoudInLiveMode(data.ai_reply);
+      } catch (err) {
+        speakOutLoudInLiveMode('I had trouble reaching the server. Let us try again.');
+      }
+    }
+
+    async function processLiveAgentTurn(spokenText) {
+      appendWorkspaceBubble('user', spokenText);
+      try {
+        const res = await fetch('/api/v1/workspace/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription_id: activeSubscriptionId,
+            message: spokenText,
+            voice_mode: true
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          updateWorkspaceMetricsUI(data);
+          appendWorkspaceBubble('assistant', data.agent_reply);
+          speakOutLoudInLiveMode(data.agent_reply);
+        } else {
+          speakOutLoudInLiveMode(String(data.detail || 'Security alert triggered.'));
+        }
+      } catch (err) {
+        speakOutLoudInLiveMode('Connection error while talking to your agent.');
+      }
+    }
+
+    function speakOutLoudInLiveMode(textToSpeak) {
+      if (!liveCallActive) return;
+      const orb = document.getElementById('liveVoiceOrb');
+      const badge = document.getElementById('liveVoiceStateBadge');
+      const transcriptEl = document.getElementById('liveVoiceTranscript');
+
+      orb.className = 'w-40 h-40 rounded-full bg-gradient-to-tr from-indigo-500 via-blue-500 to-cyan-400 flex items-center justify-center cursor-pointer orb-speaking transition-all';
+      badge.innerText = 'Speaking to you...';
+      badge.className = 'mt-8 text-xs uppercase tracking-widest text-indigo-400 font-semibold';
+      transcriptEl.innerText = textToSpeak;
+
+      if (!window.speechSynthesis) {
+        setTimeout(beginLiveVoiceListening, 3000);
+        return;
+      }
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.rate = 1.03;
+
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(function(v) {
+        return v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Online'));
+      }) || voices.find(function(v) { return v.lang.startsWith('en'); });
+      if (preferredVoice) utterance.voice = preferredVoice;
+
+      utterance.onend = function() {
+        if (liveCallActive) beginLiveVoiceListening();
+      };
+      utterance.onerror = function() {
+        if (liveCallActive) beginLiveVoiceListening();
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function interruptAndSpeakNow() {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      beginLiveVoiceListening();
+    }
+
+    function triggerManualListenInLiveMode() {
+      interruptAndSpeakNow();
+    }
+
+    function stopLiveVoiceCall() {
+      liveCallActive = false;
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      if (liveCallRecognition) {
+        try { liveCallRecognition.stop(); } catch (e) {}
+      }
+      document.getElementById('liveVoiceOverlay').classList.add('hidden');
+    }
+
+    // =========================================================================
+    // CREATOR PROFILE, WALLET PAYOUTS & AGENT MANAGEMENT
+    // =========================================================================
+    function syncDeveloperView() {
+      const onboarding = document.getElementById('devOnboardingBox');
+      const creatorPage = document.getElementById('devCreatorProfile');
+
+      if (!myDeveloperProfile) {
+        onboarding.classList.remove('hidden');
+        creatorPage.classList.add('hidden');
+      } else {
+        onboarding.classList.add('hidden');
+        creatorPage.classList.remove('hidden');
+
+        document.getElementById('navUserAvatar').src = myDeveloperProfile.avatar_url;
+        document.getElementById('navProfileLabel').innerText = '@' + myDeveloperProfile.username;
+
+        document.getElementById('liAvatar').src = myDeveloperProfile.avatar_url;
+        document.getElementById('liName').innerText = myDeveloperProfile.display_name;
+        document.getElementById('liHeadline').innerText = myDeveloperProfile.headline;
+        document.getElementById('liHandle').innerText = '@' + myDeveloperProfile.username;
+        document.getElementById('liBio').innerText = myDeveloperProfile.bio;
+        document.getElementById('liAgentCount').innerText = (myDeveloperProfile.agents || []).length;
+        document.getElementById('liGrossSales').innerText = '$' + (myDeveloperProfile.gross_sales_usd || 0).toFixed(2);
+        document.getElementById('liAvailableBalance').innerText = '$' + (myDeveloperProfile.available_balance_usd || 0).toFixed(2);
+        document.getElementById('liTrust').innerText = myDeveloperProfile.trust_score + '%';
+
+        const skillsBox = document.getElementById('liSkills');
+        skillsBox.innerHTML = (myDeveloperProfile.skills || []).map(function(s) {
+          return '<span class="bg-slate-800 text-slate-200 px-2.5 py-1 rounded-full text-xs">' + escapeHtml(s) + '</span>';
+        }).join('');
+
+        const feed = document.getElementById('liPostedAgentsFeed');
+        const agents = myDeveloperProfile.agents || [];
+        if (agents.length === 0) {
+          feed.innerHTML = '<div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 text-center text-xs text-slate-400">Click "+ Post New AI Agent" above to publish your first agent under your profile.</div>';
+        } else {
+          feed.innerHTML = agents.map(function(a) {
+            return `
+              <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 flex items-center justify-between gap-4">
+                <div>
+                  <span class="text-[11px] uppercase tracking-wider text-blue-400 font-semibold">${escapeHtml(a.industry)}</span>
+                  <h4 class="text-base font-semibold text-white mt-0.5">${escapeHtml(a.name)}</h4>
+                  <p class="text-xs text-slate-400 mt-1">${escapeHtml(a.tagline)}</p>
+                  <div class="flex items-center gap-4 mt-2.5 text-[11px] text-slate-400">
+                    <span class="flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5 text-[#FE2C55]" viewBox="0 0 24 24" fill="#FE2C55"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      ${a.likes_count || 0} Likes
+                    </span>
+                    <span>${a.comments_count || 0} Reviews</span>
+                    <span>${a.active_subscribers} Subscribers</span>
+                  </div>
+                </div>
+                <div class="text-right shrink-0 flex flex-col items-end gap-2">
+                  <div class="text-white font-bold text-sm">$${a.monthly_price_usd}/mo</div>
+                  <button type="button" onclick="deletePublishedAgent(${a.agent_id})"
+                    class="text-[11px] text-rose-400 hover:underline">
+                    Remove Agent
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        const ledger = document.getElementById('liSubscriberLedger');
+        const subs = myDeveloperProfile.recent_subscribers || [];
+        if (subs.length === 0) {
+          ledger.innerHTML = '<div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 text-slate-500">When businesses subscribe to your agents, your 75% revenue payouts appear here.</div>';
+        } else {
+          ledger.innerHTML = subs.map(function(s) {
+            return `
+              <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3.5 flex items-center justify-between">
+                <div>
+                  <div class="text-white font-medium">${escapeHtml(s.business_name)} <span class="text-[10px] text-slate-500 mono ml-1">${escapeHtml(s.invoice_code || '')}</span></div>
+                  <div class="text-[11px] text-slate-400">${escapeHtml(s.agent_name)} • ${escapeHtml(s.payment_method || 'Card')}</div>
+                </div>
+                <span class="text-blue-400 font-bold mono">+$${s.creator_earned_usd}</span>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+    }
+
+    async function submitCreatorPayout(event) {
+      event.preventDefault();
+      const method = document.getElementById('payoutMethodInput').value;
+      const dest = document.getElementById('payoutAccountInput').value.trim();
+      if (!dest) return;
+
+      const res = await fetch('/api/v1/developers/payout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + window.authToken
+        },
+        body: JSON.stringify({
+          payout_method: method,
+          destination_account: dest
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        myDeveloperProfile = data.developer_profile;
+        document.getElementById('payoutAccountInput').value = '';
+        syncDeveloperView();
+        if (data.email_notification) {
+          showEmailNotificationToast(data.email_notification);
+        }
+      } else {
+        alert(data.detail || 'Could not process payout.');
+      }
+    }
+
+    async function deletePublishedAgent(agentId) {
+      const res = await fetch('/api/v1/agents/' + agentId, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + window.authToken }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        myDeveloperProfile = data.developer_profile;
+        syncDeveloperView();
+        loadMarketplace();
+      }
+    }
+
+    async function openPublicDeveloperModal(username) {
+      const res = await fetch('/api/v1/developers/public/' + encodeURIComponent(username));
+      if (!res.ok) return;
+      const dev = await res.json();
+
+      document.getElementById('pubDevAvatar').src = dev.avatar_url;
+      document.getElementById('pubDevName').innerText = dev.display_name;
+      document.getElementById('pubDevHeadline').innerText = dev.headline;
+      document.getElementById('pubDevHandle').innerText = '@' + dev.username + ' • ' + dev.trust_score + '% Trust Score';
+      document.getElementById('pubDevBio').innerText = dev.bio;
+
+      document.getElementById('pubDevSkills').innerHTML = (dev.skills || []).map(function(s) {
+        return '<span class="bg-slate-800 text-slate-200 px-2.5 py-0.5 rounded-full text-[11px]">' + escapeHtml(s) + '</span>';
+      }).join('');
+
+      document.getElementById('pubDevAgents').innerHTML = (dev.agents || []).map(function(a) {
+        return `
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+            <div>
+              <div class="text-[10px] uppercase text-blue-400 font-semibold">${escapeHtml(a.industry)}</div>
+              <div class="text-xs font-bold text-white mt-0.5">${escapeHtml(a.name)}</div>
+              <div class="text-[11px] text-slate-400 mt-1">${escapeHtml(a.tagline)}</div>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between">
+              <span class="text-xs font-bold text-white">$${a.monthly_price_usd}/mo</span>
+              <button type="button" onclick="closePublicDevModal(); openSubscribeModalById(${a.agent_id});"
+                class="text-[11px] text-blue-400 hover:underline font-semibold">Subscribe</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('publicDevModal').classList.remove('hidden');
+    }
+
+    function closePublicDevModal() {
+      document.getElementById('publicDevModal').classList.add('hidden');
+    }
+
+    function openEditProfile() {
+      if (myDeveloperProfile) {
+        document.getElementById('devDisplayName').value = myDeveloperProfile.display_name;
+        document.getElementById('devUsername').value = myDeveloperProfile.username;
+        document.getElementById('devHeadline').value = myDeveloperProfile.headline;
+        document.getElementById('devBio').value = myDeveloperProfile.bio;
+        document.getElementById('devSkills').value = (myDeveloperProfile.skills || []).join(', ');
+        uploadedAvatarDataUrl = myDeveloperProfile.avatar_url;
+        document.getElementById('devAvatarPreview').src = uploadedAvatarDataUrl;
+      }
+      document.getElementById('devCreatorProfile').classList.add('hidden');
+      document.getElementById('devOnboardingBox').classList.remove('hidden');
+    }
+
+    function togglePostAgentForm() {
+      document.getElementById('postAgentComposer').classList.toggle('hidden');
+    }
+
+    function handleAvatarFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        uploadedAvatarDataUrl = e.target.result;
+        document.getElementById('devAvatarPreview').src = uploadedAvatarDataUrl;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handlePythonFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('agCode').value = e.target.result;
+      };
+      reader.readAsText(file);
+    }
+
+    async function saveDeveloperProfile(event) {
+      event.preventDefault();
+      const payload = {
+        username: document.getElementById('devUsername').value,
+        display_name: document.getElementById('devDisplayName').value,
+        avatar_url: uploadedAvatarDataUrl,
+        headline: document.getElementById('devHeadline').value,
+        bio: document.getElementById('devBio').value,
+        skills: document.getElementById('devSkills').value
+      };
+
+      const res = await fetch('/api/v1/developers/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + window.authToken
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        myDeveloperProfile = data;
+        syncDeveloperView();
+      } else {
+        alert(data.detail || 'Could not save profile.');
+      }
+    }
+
+    function insertStarterTemplate() {
+      document.getElementById('agCode').value =
+`class AgentWorker:
+    def run(self, ctx, payload):
+        user_msg = payload.get("message", "Task")
+        total_runs = int(ctx.get_memory("runs", 0)) + 1
+        ctx.set_memory("runs", total_runs)
+        kb_status = "Loaded" if ctx.knowledge_base else "Empty"
+        return {
+            "tasks_handled": total_runs,
+            "company_knowledge": kb_status,
+            "status": "Executed & Verified Inside Selgo Cloud"
+        }`;
+    }
+
+    async function publishNewAgent(event) {
+      event.preventDefault();
+      const statusBox = document.getElementById('agDeployStatus');
+      statusBox.classList.remove('hidden');
+
+      const payload = {
+        name: document.getElementById('agName').value,
+        industry: document.getElementById('agIndustry').value,
+        tagline: document.getElementById('agTagline').value,
+        description: document.getElementById('agDescription').value,
+        system_prompt: document.getElementById('agSystemPrompt').value,
+        input_label: 'Talk to your agent or assign a task...',
+        monthly_price_usd: parseInt(document.getElementById('agPrice').value || '49', 10),
+        python_code: document.getElementById('agCode').value
+      };
+
+      const res = await fetch('/api/v1/agents/deploy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + window.authToken
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        myDeveloperProfile = data.developer_profile;
+        statusBox.className = 'mt-4 p-3.5 rounded-xl text-xs bg-blue-500/10 border border-blue-500/30 text-blue-300';
+        statusBox.innerText = 'Published "' + data.name + '" under your profile!';
+        document.getElementById('agName').value = '';
+        document.getElementById('agTagline').value = '';
+        document.getElementById('agDescription').value = '';
+        syncDeveloperView();
+        loadMarketplace();
+        setTimeout(function() {
+          document.getElementById('postAgentComposer').classList.add('hidden');
+          statusBox.classList.add('hidden');
+        }, 1200);
+      } else {
+        statusBox.className = 'mt-4 p-3.5 rounded-xl text-xs bg-rose-500/10 border border-rose-500/30 text-rose-300';
+        if (data.detail && data.detail.reasons) {
+          statusBox.innerText = 'Security Guard Blocked Code:\n• ' + data.detail.reasons.join('\n• ');
+        } else {
+          statusBox.innerText = String(data.detail || 'Could not publish agent.');
+        }
+      }
+    }
+
+    async function sendMentorMessage(event) {
+      event.preventDefault();
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      appendChatBubble('user', text, false);
+
+      const res = await fetch('/api/v1/mentor/interview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_message: text,
+          memory: memory,
+          history: history,
+          voice_mode: false
+        })
+      });
+      const data = await res.json();
+      memory = data.memory || memory;
+      history.push({ role: 'user', content: text });
+      history.push({ role: 'assistant', content: data.ai_reply });
+
+      appendChatBubble('assistant', data.ai_reply, data.can_show_marketplace_button);
+    }
+
+    function appendChatBubble(role, text, showMarketplaceBtn) {
+      const stream = document.getElementById('chatStream');
+      const div = document.createElement('div');
+      div.className = 'fade-in flex gap-4 items-start ' + (role === 'user' ? 'justify-end' : '');
+
+      if (role === 'user') {
+        div.innerHTML = `<div class="selgo-blue-btn text-white rounded-2xl px-5 py-3.5 text-sm font-medium max-w-lg">${escapeHtml(text)}</div>`;
+      } else {
+        const btnHtml = showMarketplaceBtn ? `
+          <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
+            <span class="text-xs text-slate-400">Ready when you are—or keep chatting below.</span>
+            <button type="button" onclick="switchView('marketplace')" class="selgo-blue-btn text-white font-semibold text-xs px-4 py-2 rounded-full transition">
+              Explore Social Marketplace
+            </button>
+          </div>
+        ` : '';
+        div.innerHTML = `
+          <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-extrabold shrink-0 mt-0.5">S</div>
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl px-5 py-4 text-sm text-slate-200 leading-relaxed max-w-xl">
+            <div class="whitespace-pre-line">${escapeHtml(text)}</div>
+            ${btnHtml}
+          </div>
+        `;
+      }
+      stream.appendChild(div);
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+
+    function openSubscribeModalById(agentId) {
+      const ag = loadedAgentsById[agentId];
+      if (!ag) return;
+      document.getElementById('subModalAgentId').value = ag.agent_id;
+      document.getElementById('subModalAgentName').innerText = ag.name;
+      document.getElementById('subModalPrice').innerText = '$' + ag.monthly_price_usd + '/month';
+      if (currentUser) {
+        document.getElementById('subBusinessName').value = currentUser.full_name + "'s Workspace";
+      }
+      if (memory.pain_point) {
+        document.getElementById('subBusinessGoal').value = memory.pain_point;
+      }
+      document.getElementById('subscribeModal').classList.remove('hidden');
+    }
+
+    function closeSubscribeModal() {
+      document.getElementById('subscribeModal').classList.add('hidden');
+    }
+
+    async function confirmSubscriptionAndDeploy(event) {
+      event.preventDefault();
+      const agentId = parseInt(document.getElementById('subModalAgentId').value, 10);
+      const businessName = document.getElementById('subBusinessName').value;
+      const businessGoal = document.getElementById('subBusinessGoal').value;
+
+      const res = await fetch('/api/v1/subscriptions/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + window.authToken
+        },
+        body: JSON.stringify({
+          agent_id: agentId,
+          business_name: businessName,
+          business_goal: businessGoal,
+          payment_method: selectedPaymentMethod
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        mySubscriptions = data.all_subscriptions || [];
+        closeSubscribeModal();
+        if (data.email_notification) {
+          showEmailNotificationToast(data.email_notification);
+        }
+        syncSubscriptionsNavAndWorkspace(data.subscription.subscription_id);
+        switchView('workspace');
+      }
+    }
+
+    function handleKnowledgeFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const existing = document.getElementById('wsKnowledgeTextarea').value;
+        document.getElementById('wsKnowledgeTextarea').value =
+          (existing ? existing + '\n\n' : '') + '--- FILE: ' + file.name + ' ---\n' + e.target.result;
+      };
+      reader.readAsText(file);
+    }
+
+    async function saveWorkspaceKnowledgeBase() {
+      if (!activeSubscriptionId) return;
+      const text = document.getElementById('wsKnowledgeTextarea').value;
+      const statusSpan = document.getElementById('wsKnowledgeStatus');
+      statusSpan.innerText = 'Syncing...';
+
+      const res = await fetch('/api/v1/workspace/knowledge', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + window.authToken
+        },
+        body: JSON.stringify({
+          subscription_id: activeSubscriptionId,
+          knowledge_base_text: text
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const sub = mySubscriptions.find(function(s) { return s.subscription_id === activeSubscriptionId; });
+        if (sub) sub.knowledge_base_text = data.knowledge_base_text;
+        statusSpan.innerText = 'Synced (' + data.char_count + ' chars active)';
+        statusSpan.className = 'text-[11px] text-emerald-400 font-semibold';
+      }
+    }
+
+    function syncSubscriptionsNavAndWorkspace(selectSubId) {
+      const tabWs = document.getElementById('tabWorkspace');
+      const countSpan = document.getElementById('navSubCount');
+      countSpan.innerText = mySubscriptions.length;
+
+      if (mySubscriptions.length === 0) {
+        tabWs.classList.add('hidden');
+        return;
+      }
+
+      tabWs.classList.remove('hidden');
+      const targetId = selectSubId || activeSubscriptionId || mySubscriptions[0].subscription_id;
+      selectActiveSubscription(targetId);
+    }
+
+    function selectActiveSubscription(subId) {
+      const sub = mySubscriptions.find(function(s) { return s.subscription_id === subId; }) || mySubscriptions[0];
+      if (!sub) return;
+
+      activeSubscriptionId = sub.subscription_id;
+      activeAgentName = sub.agent_name;
+
+      const bar = document.getElementById('mySubSwitcherBar');
+      bar.innerHTML = mySubscriptions.map(function(s) {
+        const active = s.subscription_id === activeSubscriptionId;
+        return `
+          <button type="button" onclick="selectActiveSubscription(${s.subscription_id})"
+            class="${active ? 'selgo-blue-btn text-white' : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'} text-xs font-semibold px-4 py-2 rounded-full shrink-0 transition">
+            ${escapeHtml(s.agent_name)} (${escapeHtml(s.business_name)})
+          </button>
+        `;
+      }).join('');
+
+      document.getElementById('wsAgentName').innerText = sub.agent_name;
+      document.getElementById('wsInvoiceBadge').innerText = sub.invoice_code ? '• ' + sub.invoice_code : '';
+      document.getElementById('wsBusinessInfo').innerText =
+        'Deployed for ' + sub.business_name + ' • Focus: ' + sub.business_goal + ' • Paid via ' + (sub.payment_method || 'Card');
+      if (sub.developer_avatar) {
+        document.getElementById('wsDevAvatar').src = sub.developer_avatar;
+      }
+
+      document.getElementById('wsKnowledgeTextarea').value = sub.knowledge_base_text || '';
+      document.getElementById('wsKnowledgeStatus').innerText = sub.knowledge_base_text
+        ? 'Synced (' + sub.knowledge_base_text.length + ' chars active)'
+        : 'Ready for company data';
+
+      document.getElementById('wsTasksCount').innerText = sub.tasks_completed;
+      document.getElementById('wsTimeSaved').innerText = sub.minutes_saved + 'm';
+      document.getElementById('wsValueCreated').innerText = '$' + sub.value_created_usd;
+
+      const stream = document.getElementById('wsChatStream');
+      stream.innerHTML = '';
+      (sub.chat_history || []).forEach(function(turn) {
+        appendWorkspaceBubble(turn.role, turn.content);
+      });
+    }
+
+    function appendWorkspaceBubble(role, text) {
+      const stream = document.getElementById('wsChatStream');
+      const div = document.createElement('div');
+      div.className = 'fade-in flex gap-3 items-start ' + (role === 'user' ? 'justify-end' : '');
+
+      if (role === 'user') {
+        div.innerHTML = `<div class="selgo-blue-btn text-white rounded-2xl px-4 py-3 text-sm font-medium max-w-md">${escapeHtml(text)}</div>`;
+      } else {
+        div.innerHTML = `
+          <div class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">AI</div>
+          <div class="bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm text-slate-200 leading-relaxed max-w-lg whitespace-pre-line">${escapeHtml(text)}</div>
+        `;
+      }
+      stream.appendChild(div);
+      stream.scrollTop = stream.scrollHeight;
+    }
+
+    function updateWorkspaceMetricsUI(data) {
+      document.getElementById('wsTasksCount').innerText = data.metrics.tasks_completed;
+      document.getElementById('wsTimeSaved').innerText = data.metrics.minutes_saved + 'm';
+      document.getElementById('wsValueCreated').innerText = '$' + data.metrics.value_created_usd;
+      document.getElementById('wsSpeed').innerText = data.execution_speed_ms + ' ms';
+
+      const sub = mySubscriptions.find(function(s) { return s.subscription_id === activeSubscriptionId; });
+      if (sub) {
+        sub.tasks_completed = data.metrics.tasks_completed;
+        sub.minutes_saved = data.metrics.minutes_saved;
+        sub.value_created_usd = data.metrics.value_created_usd;
+        if (data.chat_history) sub.chat_history = data.chat_history;
+      }
+
+      const entries = Object.entries(data.structured_output || {});
+      const resultContainer = document.getElementById('wsResultCards');
+      if (entries.length > 0) {
+        resultContainer.innerHTML = entries.map(function(entry) {
+          return `
+            <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3 flex items-center justify-between">
+              <span class="text-[11px] uppercase tracking-wider text-slate-400">${escapeHtml(entry[0].replace(/_/g, ' '))}</span>
+              <span class="text-xs font-semibold text-blue-400 mono">${escapeHtml(String(entry[1]))}</span>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    async function sendWorkspaceAgentMessage(event) {
+      event.preventDefault();
+      if (!activeSubscriptionId) return;
+
+      const input = document.getElementById('wsChatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      appendWorkspaceBubble('user', text);
+
+      const res = await fetch('/api/v1/workspace/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscription_id: activeSubscriptionId,
+          message: text,
+          voice_mode: false
+        })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        updateWorkspaceMetricsUI(data);
+        appendWorkspaceBubble('assistant', data.agent_reply);
+      } else {
+        appendWorkspaceBubble('assistant', 'Security Alert: ' + String(data.detail));
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+      });
+    }
+  </script>
+</body>
+</html>
