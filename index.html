@@ -9,13 +9,32 @@
     overflow-x: hidden !important;
   }
   @media (max-width: 768px) {
-    /* 1. Stop any box or card from being wider than the phone screen */
-    *, *::before, *::after {
-      max-width: 100% !important;
-      box-sizing: border-box !important;
+    /* 1. Let the top navbar grow taller so it never overlaps DIAGNOSTIC INTELLIGENCE */
+    header, nav, header > div, nav > div {
+      height: auto !important;
+      min-height: 0 !important;
+      flex-wrap: wrap !important;
+      gap: 0.5rem !important;
+      padding-top: 0.4rem !important;
+      padding-bottom: 0.4rem !important;
     }
 
-    /* 2. Stack 2-column and multi-column grids on top of each other */
+    /* 2. Add breathing room above the main page content */
+    main {
+      padding-top: 1rem !important;
+      padding-left: 0.75rem !important;
+      padding-right: 0.75rem !important;
+    }
+
+    /* 3. Keep "AI Business Mentor" and "Agent Marketplace" on one clean line without chopping words */
+    header button, nav button, header a, nav a {
+      white-space: nowrap !important;
+      word-break: keep-all !important;
+      font-size: 0.75rem !important;
+      padding: 0.4rem 0.65rem !important;
+    }
+
+    /* 4. Stack multi-column page grids vertically on mobile */
     .grid, [class*="grid-cols-"] {
       grid-template-columns: minmax(0, 1fr) !important;
       gap: 1rem !important;
@@ -25,19 +44,7 @@
       width: 100% !important;
     }
 
-    /* 3. Stack side-by-side panels vertically and wrap top buttons */
-    header, nav, .flex {
-      flex-wrap: wrap !important;
-    }
-    main [class*="gap-6"].flex,
-    main [class*="gap-8"].flex,
-    main [class*="gap-10"].flex,
-    section [class*="gap-6"].flex,
-    section [class*="gap-8"].flex {
-      flex-direction: column !important;
-    }
-
-    /* 4. Shrink wide popups, mail boxes, and fixed cards to fit phone width */
+    /* 5. Fit popups and mail notifications inside the phone screen */
     [id*="Toast"], [id*="toast"], [id*="Mail"], [id*="mail"], .fixed:not(.inset-0) {
       left: 0.5rem !important;
       right: 0.5rem !important;
@@ -45,23 +52,6 @@
       max-width: calc(100vw - 1rem) !important;
       min-width: 0 !important;
       transform: none !important;
-    }
-    [class*="min-w-"], [class*="w-["], .w-96, .w-80 {
-      min-width: 0 !important;
-      width: 100% !important;
-    }
-    [class*="p-8"], [class*="p-10"], [class*="px-8"], [class*="px-10"] {
-      padding: 1rem !important;
-    }
-
-    /* 5. Wrap long text and scale big titles */
-    p, span, div, a, h1, h2, h3 {
-      overflow-wrap: break-word !important;
-      word-break: break-word !important;
-    }
-    h1 {
-      font-size: 1.6rem !important;
-      line-height: 1.25 !important;
     }
   }
 </style>
