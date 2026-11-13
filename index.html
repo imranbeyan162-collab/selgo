@@ -62,8 +62,10 @@
 
   <script>
     window.authMode = 'login';
-    window.selectedSignupRole = 'business'; // 'business' or 'developer'
+    window.selectedSignupRole = 'business';
     window.authToken = localStorage.getItem('selgo_auth_token') || null;
+    window.pendingSignupVerificationCode = null;
+    window.pendingSignupEmail = null;
 
     window.selectAccountRoleChoice = function(role) {
       window.selectedSignupRole = role;
@@ -82,10 +84,11 @@
 
     window.toggleAuthMode = function(mode) {
       window.authMode = mode;
+      window.pendingSignupVerificationCode = null;
       var loginSignupBox = document.getElementById('loginSignupFormWrapper');
       var forgotBox = document.getElementById('forgotPasswordWrapper');
       var nameBox = document.getElementById('signupNameWrapper');
-      var rolePromptLabel = document.getElementById('rolePromptLabel');
+      var verifyBox = document.getElementById('signupEmailVerifyBox');
       var strengthBox = document.getElementById('passwordStrengthHint');
       var submitBtn = document.getElementById('authSubmitBtn');
       var loginTab = document.getElementById('tabLoginBtn');
@@ -93,8 +96,10 @@
       var sliderPill = document.getElementById('authSliderPill');
       var errBox = document.getElementById('authErrorBox');
       var bottomSwitchText = document.getElementById('authBottomSwitchText');
+      var rolePromptLabel = document.getElementById('rolePromptLabel');
 
       if (errBox) errBox.classList.add('hidden');
+      if (verifyBox) verifyBox.classList.add('hidden');
 
       if (mode === 'forgot') {
         if (loginSignupBox) loginSignupBox.classList.add('hidden');
@@ -107,9 +112,9 @@
 
       if (mode === 'signup') {
         if (nameBox) nameBox.classList.remove('hidden');
-        if (rolePromptLabel) rolePromptLabel.innerText = 'Choose your account type (locked after sign-in):';
         if (strengthBox) strengthBox.classList.remove('hidden');
-        if (submitBtn) submitBtn.innerText = 'Create My Selgo Account';
+        if (rolePromptLabel) rolePromptLabel.innerText = 'Choose your account type (locked for this session):';
+        if (submitBtn) submitBtn.innerText = 'Send 6-Digit Verification Code';
         if (sliderPill) sliderPill.style.transform = 'translateX(100%)';
         if (loginTab) loginTab.className = 'relative z-10 py-2.5 rounded-lg text-slate-400 hover:text-white font-medium transition';
         if (signupTab) signupTab.className = 'relative z-10 py-2.5 rounded-lg text-white font-semibold transition';
@@ -118,8 +123,8 @@
         }
       } else {
         if (nameBox) nameBox.classList.add('hidden');
-        if (rolePromptLabel) rolePromptLabel.innerText = 'Log in as (locked for this session):';
         if (strengthBox) strengthBox.classList.add('hidden');
+        if (rolePromptLabel) rolePromptLabel.innerText = 'Log in as (locked for this session):';
         if (submitBtn) submitBtn.innerText = 'Log In to Selgo';
         if (sliderPill) sliderPill.style.transform = 'translateX(0%)';
         if (loginTab) loginTab.className = 'relative z-10 py-2.5 rounded-lg text-white font-semibold transition';
@@ -128,6 +133,64 @@
           bottomSwitchText.innerHTML = 'New to Selgo? <button type="button" onclick="toggleAuthMode(\'signup\')" class="text-blue-400 hover:underline font-semibold ml-1">Create Account</button>';
         }
       }
+    };
+
+    window.validateRealEmailAddress = function(rawEmail) {
+      var email = String(rawEmail || '').trim().toLowerCase();
+      var basicRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,10}$/;
+      if (!basicRegex.test(email)) {
+        return { valid: false, reason: 'Please enter a valid email address (e.g., name@gmail.com).' };
+      }
+      var parts = email.split('@');
+      var local = parts[0];
+      var domain = parts[1];
+
+      if (local.length < 2 || /^(\d+)$/.test(local) || local === 'test' || local === 'admin' || local === 'user') {
+        if (domain === 'test.com' || domain === 'example.com' || domain === 'mail.com') {
+          return { valid: false, reason: 'Fake or placeholder email addresses are not allowed.' };
+        }
+      }
+
+      var typoMap = {
+        'gamil.com': 'gmail.com',
+        'gmial.com': 'gmail.com',
+        'gmail.co': 'gmail.com',
+        'gmail.con': 'gmail.com',
+        'gmai.com': 'gmail.com',
+        'gmal.com': 'gmail.com',
+        'gnail.com': 'gmail.com',
+        'yaho.com': 'yahoo.com',
+        'yahooo.com': 'yahoo.com',
+        'yahoo.co': 'yahoo.com',
+        'hotmial.com': 'hotmail.com',
+        'hotmai.com': 'hotmail.com',
+        'outlok.com': 'outlook.com',
+        'outllok.com': 'outlook.com',
+        'icloud.co': 'icloud.com'
+      };
+      if (typoMap[domain]) {
+        return {
+          valid: false,
+          reason: 'Mistyped email domain "@' + domain + '". Did you mean "' + local + '@' + typoMap[domain] + '"?'
+        };
+      }
+
+      var blockedDomains = [
+        'example.com', 'test.com', 'tempmail.com', '10minutemail.com',
+        'mailinator.com', 'guerrillamail.com', 'yopmail.com', 'trashmail.com',
+        'sharklasers.com', 'fakeinbox.com', 'getnada.com', 'temp-mail.org'
+      ];
+      if (blockedDomains.indexOf(domain) !== -1) {
+        return { valid: false, reason: 'Disposable or temporary email addresses are not permitted on Selgo.' };
+      }
+
+      var domainChunks = domain.split('.');
+      var tld = domainChunks[domainChunks.length - 1];
+      if (tld.length < 2 || domainChunks[0].length < 2) {
+        return { valid: false, reason: 'That email domain does not appear to be a real mail server.' };
+      }
+
+      return { valid: true, cleanEmail: email };
     };
 
     window.checkPasswordStrengthLive = function(val) {
@@ -168,7 +231,7 @@
           </svg>
         </div>
         <div>
-          <div class="text-[10px] uppercase tracking-wider text-blue-400 font-semibold" id="emailToastDelivery">Email Notification Sent</div>
+          <div class="text-[10px] uppercase tracking-wider text-blue-400 font-semibold" id="emailToastDelivery">Email Verification Sent</div>
           <div class="text-xs font-bold text-white" id="emailToastSubject"></div>
         </div>
       </div>
@@ -182,7 +245,7 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- GATE 0: LOGIN & SIGNUP (BOTH ASK FOR DEVELOPER OR BUSINESS OWNER)     -->
+  <!-- GATE 0: OFFICIAL SELGO BRAND LOGIN / SIGNUP WITH EMAIL VERIFICATION   -->
   <!-- ===================================================================== -->
   <div id="authGate" class="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-950/30 via-[#050811] to-[#050811]">
     
@@ -212,7 +275,7 @@
 
     <div class="bg-slate-900/80 border border-slate-800/90 rounded-2xl max-w-md w-full p-6 sm:p-7 shadow-2xl backdrop-blur-md">
       <div id="loginSignupFormWrapper">
-        <div id="authToggleTrack" class="relative grid grid-cols-2 bg-slate-950 p-1 rounded-xl mb-5 text-xs select-none cursor-pointer">
+        <div id="authToggleTrack" class="relative grid grid-cols-2 bg-slate-950 p-1 rounded-xl mb-6 text-xs select-none cursor-pointer">
           <div id="authSliderPill" class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-lg bg-blue-600 transition-transform duration-200 ease-out"></div>
           <button type="button" id="tabLoginBtn" onclick="toggleAuthMode('login')" class="relative z-10 py-2.5 rounded-lg text-white font-semibold transition">
             Log In
@@ -223,7 +286,7 @@
         </div>
 
         <form onsubmit="submitAuthForm(event)" class="space-y-4">
-          <!-- ALWAYS VISIBLE ON BOTH LOG IN & SIGN UP: BUSINESS OWNER VS AI DEVELOPER -->
+          <!-- SESSION ROLE SELECTOR (BUSINESS OWNER VS AI DEVELOPER) -->
           <div id="signupRoleWrapper" class="space-y-2">
             <label id="rolePromptLabel" class="text-xs text-slate-300 font-semibold block">Log in as (locked for this session):</label>
             <div class="grid grid-cols-2 gap-2.5">
@@ -242,7 +305,7 @@
                   <span class="text-xs font-bold text-white">AI Developer</span>
                   <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
                 </div>
-                <p class="text-[11px] text-slate-400 leading-snug">Publish AI agents, see buyers & withdraw 75% earnings.</p>
+                <p class="text-[11px] text-slate-400 leading-snug">Publish AI agents, see buyers & withdraw 80% earnings.</p>
               </button>
             </div>
           </div>
@@ -254,8 +317,8 @@
           </div>
 
           <div>
-            <label class="text-xs text-slate-400 block mb-1.5">Email Address</label>
-            <input id="authEmail" type="email" required placeholder="you@example.com"
+            <label class="text-xs text-slate-400 block mb-1.5">Email Address (Verified)</label>
+            <input id="authEmail" type="email" required placeholder="you@gmail.com"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
           </div>
 
@@ -275,6 +338,17 @@
               </div>
               <div id="pwStrengthLabel" class="text-[11px] text-slate-500">Use 8+ characters with letters & numbers</div>
             </div>
+          </div>
+
+          <!-- 6-DIGIT EMAIL VERIFICATION BOX FOR NEW SIGNUPS -->
+          <div id="signupEmailVerifyBox" class="hidden fade-in bg-slate-950 border border-blue-500/40 rounded-xl p-3.5 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-semibold text-blue-400">Enter 6-Digit Email Verification Code</label>
+              <button type="button" onclick="resendSignupVerificationCode()" class="text-[11px] text-slate-400 hover:text-white underline">Resend code</button>
+            </div>
+            <input id="signupVerifyCodeInput" type="text" maxlength="6" placeholder="123456"
+              class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-2 text-sm mono text-white tracking-widest focus:outline-none focus:border-blue-500" />
+            <p class="text-[11px] text-slate-400">We sent a 6-digit code to verify your email is real and active.</p>
           </div>
 
           <div id="authErrorBox" class="hidden text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl p-3"></div>
@@ -344,7 +418,7 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- GEMINI-STYLE SLIDE-OUT SIDEBAR DRAWER (TWO HORIZONTAL LINES MENU)     -->
+  <!-- GEMINI-STYLE SLIDE-OUT SIDEBAR DRAWER                                 -->
   <!-- ===================================================================== -->
   <div id="geminiDrawerBackdrop" onclick="closeSideDrawer()"
     class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 transition-opacity"></div>
@@ -352,38 +426,49 @@
   <aside id="geminiSideDrawer"
     class="fixed top-0 left-0 bottom-0 w-[300px] max-w-[85vw] bg-[#080D1A] border-r border-slate-800/90 z-50 transform -translate-x-full transition-transform duration-200 ease-out flex flex-col justify-between select-none shadow-2xl">
     
-    <!-- TOP HEADER -->
-    <div class="p-4 border-b border-slate-800/80 flex items-center justify-between">
-      <div class="flex items-center gap-2.5">
-        <svg class="w-7 h-7" viewBox="0 0 100 100" fill="none">
-          <path d="M84 12 C52 22, 16 28, 16 48 C16 60, 34 65, 48 60 L38 52 C29 52, 28 46, 36 42 C48 36, 74 30, 84 12 Z" fill="#0066FF"/>
-          <path d="M16 88 C48 78, 84 72, 84 52 C84 40, 66 35, 52 40 L62 48 C71 48, 72 54, 64 58 C52 64, 26 70, 16 88 Z" fill="#3B82F6"/>
-        </svg>
-        <div class="flex items-center">
-          <span class="font-extrabold text-base text-white tracking-tight">Selgo</span>
-          <span id="drawerRoleBadge" class="ml-2 text-[10px] uppercase tracking-wider bg-blue-500/15 border border-blue-500/30 text-blue-400 px-2 py-0.5 rounded-full font-semibold">BUSINESS</span>
+    <!-- TOP HEADER + NEW CHAT BUTTON -->
+    <div class="p-4 border-b border-slate-800/80 space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <svg class="w-7 h-7" viewBox="0 0 100 100" fill="none">
+            <path d="M84 12 C52 22, 16 28, 16 48 C16 60, 34 65, 48 60 L38 52 C29 52, 28 46, 36 42 C48 36, 74 30, 84 12 Z" fill="#0066FF"/>
+            <path d="M16 88 C48 78, 84 72, 84 52 C84 40, 66 35, 52 40 L62 48 C71 48, 72 54, 64 58 C52 64, 26 70, 16 88 Z" fill="#3B82F6"/>
+          </svg>
+          <div>
+            <span class="font-extrabold text-base text-white tracking-tight">Selgo</span>
+            <span id="drawerRoleBadge" class="ml-1.5 text-[10px] uppercase tracking-wider bg-blue-500/15 border border-blue-500/30 text-blue-400 px-2 py-0.5 rounded-full font-semibold">Business</span>
+          </div>
         </div>
+        <button type="button" onclick="closeSideDrawer()"
+          class="w-8 h-8 rounded-full hover:bg-slate-800/80 flex items-center justify-center text-slate-400 hover:text-white transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
       </div>
-      <button type="button" onclick="closeSideDrawer()"
-        class="w-8 h-8 rounded-full hover:bg-slate-800/80 flex items-center justify-center text-slate-400 hover:text-white transition">
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <path d="M18 6L6 18M6 6l12 12"/>
+
+      <button type="button" onclick="startNewMentorChatSession()"
+        class="w-full selgo-blue-btn text-white font-semibold text-xs py-2.5 px-4 rounded-full flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 transition">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
+        <span>New Mentor Chat</span>
       </button>
     </div>
 
-    <!-- MIDDLE: GEMINI-STYLE MENU ITEMS + SAVED CHAT HISTORIES -->
+    <!-- MIDDLE: MAIN NAVIGATION + SAVED CHAT HISTORIES -->
     <div class="flex-1 overflow-y-auto px-3 py-3 space-y-5">
       
-      <!-- GEMINI-STYLE MENU LIST (UNDER THE TWO HORIZONTAL LINES) -->
       <div class="space-y-1">
-        <!-- 1. New Chat (Just like Gemini) -->
-        <button type="button" id="drawerNavMentor" onclick="startNewMentorChatSession()"
-          class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-3 text-slate-200 hover:bg-slate-900 hover:text-white transition">
-          <svg class="w-4 h-4 shrink-0 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        <div class="px-3 pb-1 text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Navigation</div>
+
+        <!-- 1. AI Business Mentor -->
+        <button type="button" id="drawerNavMentor" onclick="switchView('mentor')"
+          class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium flex items-center gap-3 bg-blue-600/15 text-blue-400 border border-blue-500/30 transition">
+          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
-          <span>New Chat</span>
+          <span>Selgo AI Mentor</span>
         </button>
 
         <!-- 2. Agent Market -->
@@ -399,7 +484,7 @@
           <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full mono" id="drawerMarketCount">0</span>
         </button>
 
-        <!-- 3. Business Owner Only: Purchased Agents & Performance -->
+        <!-- 3. Business Owner Dashboard (Purchased Agents & Performance) -->
         <button type="button" id="drawerNavWorkspace" onclick="switchView('workspace')"
           class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium flex items-center justify-between text-slate-300 hover:bg-slate-900 hover:text-white transition">
           <div class="flex items-center gap-3">
@@ -414,7 +499,7 @@
           <span class="text-[10px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded-full mono" id="navSubCount">0</span>
         </button>
 
-        <!-- 4. AI Developer Only: Developer Studio & Earnings -->
+        <!-- 4. Developer Studio & Earnings Dashboard (80% Share) -->
         <button type="button" id="drawerNavDeveloper" onclick="switchView('developer')"
           class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium flex items-center justify-between text-slate-300 hover:bg-slate-900 hover:text-white transition">
           <div class="flex items-center gap-3">
@@ -424,13 +509,13 @@
             </svg>
             <div>
               <div class="leading-tight">Developer Studio</div>
-              <div class="text-[10px] text-slate-500 font-normal">Earnings, Buyers & Post Agent</div>
+              <div class="text-[10px] text-slate-500 font-normal">80% Earnings, Buyers & Post</div>
             </div>
           </div>
           <span class="text-[10px] bg-amber-500/15 border border-amber-500/30 text-amber-300 px-2 py-0.5 rounded-full mono" id="drawerDevEarningsBadge">$0</span>
         </button>
 
-        <!-- 5. Account, Password & Log Out -->
+        <!-- 5. Account, Password & Profile Settings -->
         <button type="button" id="drawerNavAccount" onclick="switchView('account')"
           class="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium flex items-center gap-3 text-slate-300 hover:bg-slate-900 hover:text-white transition">
           <svg class="w-4 h-4 shrink-0 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -624,626 +709,4 @@
       <div id="sandboxOutputBox" class="hidden mt-4 bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
         <div class="flex items-center justify-between text-[11px] text-blue-400 font-semibold">
           <span>LIVE AGENT RESPONSE</span>
-          <span id="sandboxSpeedBadge" class="mono text-slate-500"></span>
-        </div>
-        <p id="sandboxReplyText" class="text-xs text-slate-200 leading-relaxed whitespace-pre-line"></p>
-      </div>
-
-      <div class="mt-5 pt-4 border-t border-slate-800 flex items-center justify-between">
-        <span class="text-xs text-slate-400">Want full voice & workspace access?</span>
-        <button type="button" id="sandboxSubscribeCta" class="selgo-blue-btn text-white font-semibold text-xs px-5 py-2 rounded-full transition">
-          Subscribe & Deploy
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================================================================== -->
-  <!-- MAIN APP SHELL (CLEAN GEMINI HEADER — ALL LINKS INSIDE DRAWER)        -->
-  <!-- ===================================================================== -->
-  <div id="appShell" class="hidden min-h-screen flex flex-col">
-
-    <!-- MINIMAL GEMINI TOP BAR: ONLY 2-LINE MENU + SELGO LOGO + AVATAR -->
-    <nav class="h-14 border-b border-slate-800/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 bg-[#050811]/95 backdrop-blur-md z-40">
-      <div class="flex items-center gap-3">
-        <!-- TWO-LINE GEMINI MENU BUTTON -->
-        <button type="button" onclick="openSideDrawer()" title="Open Menu"
-          class="w-10 h-10 rounded-full hover:bg-slate-900 border border-slate-800/90 flex flex-col items-center justify-center gap-1.5 text-slate-200 hover:text-white transition">
-          <span class="w-4 h-[2px] bg-current rounded-full"></span>
-          <span class="w-4 h-[2px] bg-current rounded-full"></span>
-        </button>
-
-        <button type="button" onclick="switchView('mentor')" class="flex items-center gap-2.5 text-left">
-          <svg class="w-7 h-7" viewBox="0 0 100 100" fill="none">
-            <path d="M84 12 C52 22, 16 28, 16 48 C16 60, 34 65, 48 60 L38 52 C29 52, 28 46, 36 42 C48 36, 74 30, 84 12 Z" fill="#0066FF"/>
-            <path d="M16 88 C48 78, 84 72, 84 52 C84 40, 66 35, 52 40 L62 48 C71 48, 72 54, 64 58 C52 64, 26 70, 16 88 Z" fill="#1D4ED8"/>
-          </svg>
-          <span class="font-extrabold tracking-tight text-base text-white leading-none">Selgo</span>
-        </button>
-      </div>
-
-      <div class="flex items-center gap-2.5">
-        <button type="button" onclick="startLiveVoiceCall('mentor')"
-          class="h-9 px-3.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-100 font-medium text-xs flex items-center gap-2 transition">
-          <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <line x1="4" y1="10" x2="4" y2="14"/>
-            <line x1="8" y1="6" x2="8" y2="18"/>
-            <line x1="12" y1="3" x2="12" y2="21"/>
-            <line x1="16" y1="6" x2="16" y2="18"/>
-            <line x1="20" y1="10" x2="20" y2="14"/>
-          </svg>
-          <span>Live</span>
-        </button>
-
-        <button type="button" onclick="switchView('account')" title="Account & Settings"
-          class="w-9 h-9 rounded-full bg-slate-900 border border-slate-700/80 flex items-center justify-center overflow-hidden hover:border-blue-500 transition">
-          <img id="topBarAvatar" src="https://api.dicebear.com/9.x/initials/svg?seed=S&backgroundColor=0f172a" class="w-full h-full object-cover" />
-        </button>
-      </div>
-    </nav>
-
-    <!-- =================================================================== -->
-    <!-- VIEW 1: MAIN SELGO CHAT (SAVES AUTOMATICALLY IN DRAWER HISTORY)     -->
-    <!-- =================================================================== -->
-    <main id="viewMentor" class="flex-1 flex flex-col max-w-2xl w-full mx-auto px-4 sm:px-6 pt-6 sm:pt-10 pb-44">
-      <div id="chatStream" class="space-y-6 flex-1"></div>
-
-      <div class="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-[#050811] via-[#050811]/95 to-transparent pt-6 pb-5 px-4 sm:px-6 z-30">
-        <div class="max-w-2xl mx-auto">
-          <form onsubmit="sendMentorMessage(event)"
-            class="relative bg-slate-900/95 border border-slate-800/90 focus-within:border-slate-700 rounded-[28px] shadow-2xl flex items-center pl-5 sm:pl-6 pr-2.5 py-2 transition">
-            <input
-              id="chatInput"
-              type="text"
-              autocomplete="off"
-              placeholder="Ask Selgo in any language..."
-              class="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 py-2.5 focus:outline-none"
-            />
-            <div class="flex items-center gap-1.5 shrink-0 ml-2">
-              <button type="button" id="mentorMicBtn" onclick="toggleDictation('chatInput', 'mentorMicBtn')"
-                title="Voice input"
-                class="w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800/70 transition">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="2" width="6" height="11" rx="3"/>
-                  <path d="M5 10a7 7 0 0 0 14 0"/>
-                  <line x1="12" y1="17" x2="12" y2="21"/>
-                </svg>
-              </button>
-
-              <button type="submit"
-                title="Send message"
-                class="w-10 h-10 rounded-full bg-[#93C5FD] hover:bg-[#60A5FA] text-slate-950 flex items-center justify-center transition shadow-sm">
-                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="19" x2="12" y2="5"/>
-                  <polyline points="5 12 12 5 19 12"/>
-                </svg>
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </main>
-
-    <!-- =================================================================== -->
-    <!-- VIEW 2: AGENT MARKETPLACE                                           -->
-    <!-- =================================================================== -->
-    <section id="viewMarketplace" class="hidden max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 fade-in">
-
-      <div id="marketplaceQuizBox" class="hidden bg-slate-900/80 border border-slate-800 rounded-3xl p-5 sm:p-8 mb-10 shadow-2xl">
-        <div class="flex items-center justify-between mb-6">
-          <div class="flex items-center gap-3">
-            <button type="button" id="quizBackBtn" onclick="prevQuizStep()" class="hidden w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12"/>
-                <polyline points="12 19 5 12 12 5"/>
-              </svg>
-            </button>
-            <div>
-              <div class="flex items-center gap-2">
-                <span id="quizStepCounter" class="text-[11px] uppercase tracking-widest text-blue-400 font-semibold">Step 1 of 3</span>
-                <span id="quizRouteBadge" class="hidden text-[11px] text-slate-400 mono"></span>
-              </div>
-              <div class="w-36 sm:w-44 h-1.5 bg-slate-950 rounded-full overflow-hidden mt-1.5">
-                <div id="quizProgressBar" class="h-full bg-blue-500 w-1/3 transition-all duration-300"></div>
-              </div>
-            </div>
-          </div>
-          <button type="button" onclick="skipMatcherQuizPermanently()" class="text-xs text-slate-400 hover:text-white transition">
-            Skip to Feed
-          </button>
-        </div>
-
-        <div id="quizSlideViewport" class="fade-in">
-          <h2 id="quizQuestionTitle" class="text-xl sm:text-3xl font-bold text-white tracking-tight"></h2>
-          <p id="quizQuestionSubtitle" class="text-xs sm:text-sm text-slate-400 mt-1 mb-6"></p>
-          <div id="quizChoicesGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
-        </div>
-      </div>
-
-      <!-- SOCIAL SCROLLABLE AGENT MARKETPLACE FEED -->
-      <div id="marketplaceFeedContainer" class="hidden fade-in">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-5 mb-6 gap-4">
-          <div>
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="text-[11px] uppercase tracking-widest text-blue-400 font-semibold">Selgo Agent Market</span>
-              <span id="activeFilterBadge" class="hidden text-[11px] bg-blue-600/20 border border-blue-500/40 text-blue-300 px-3 py-0.5 rounded-full"></span>
-            </div>
-            <h2 class="text-2xl font-bold tracking-tight text-white mt-1">
-              Matched AI Agents for You
-            </h2>
-          </div>
-          <div class="flex items-center gap-2.5">
-            <button type="button" onclick="reopenMatcherQuiz()" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium px-3.5 py-2 rounded-full transition">
-              Update My Role Route
-            </button>
-            <button type="button" id="marketPostAgentBtn" onclick="switchView('developer')" class="selgo-blue-btn text-white font-semibold text-xs px-4 py-2 rounded-full">
-              + Post Agent
-            </button>
-          </div>
-        </div>
-
-        <div class="mb-7 max-w-2xl mx-auto">
-          <div class="relative bg-slate-900/90 border border-slate-800 focus-within:border-blue-500/60 rounded-full flex items-center px-4 py-2">
-            <svg class="w-4 h-4 text-slate-400 mr-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
-            </svg>
-            <input id="marketplaceSearchInput" type="text" oninput="renderSocialMarketplaceFeed()"
-              placeholder="Search agents by role, skill, developer, or workflow..."
-              class="w-full bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none py-1" />
-          </div>
-        </div>
-
-        <div id="marketplaceEmptyState" class="hidden bg-slate-900/40 border border-slate-800/80 rounded-2xl p-8 sm:p-12 text-center max-w-2xl mx-auto">
-          <h3 class="text-lg font-semibold text-white">No Developer Agents Published Yet</h3>
-          <p class="text-sm text-slate-400 mt-2 max-w-md mx-auto">
-            AI Developers can publish autonomous agents to the market from Developer Studio.
-          </p>
-        </div>
-
-        <div id="marketplaceGrid" class="space-y-6 max-w-2xl mx-auto"></div>
-      </div>
-    </section>
-
-    <!-- =================================================================== -->
-    <!-- VIEW 3: BUSINESS OWNER DASHBOARD — PURCHASED AGENTS & PERFORMANCE   -->
-    <!-- =================================================================== -->
-    <section id="viewWorkspace" class="hidden max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 fade-in">
-      
-      <div class="mb-7">
-        <div class="text-[11px] uppercase tracking-widest text-emerald-400 font-semibold">Business Owner Dashboard</div>
-        <h2 class="text-2xl font-bold text-white mt-0.5">My Purchased Agents & Business Performance</h2>
-        <p class="text-xs text-slate-400 mt-1">Track how your subscribed AI agents are performing across your business operations.</p>
-
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-          <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4">
-            <div class="text-[11px] text-slate-400">Active Purchased Agents</div>
-            <div id="bizTotalAgentsCount" class="text-2xl font-extrabold text-white mt-1 mono">0</div>
-          </div>
-          <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4">
-            <div class="text-[11px] text-slate-400">Total Tasks Automated</div>
-            <div id="bizTotalTasksCount" class="text-2xl font-extrabold text-blue-400 mt-1 mono">0</div>
-          </div>
-          <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4">
-            <div class="text-[11px] text-slate-400">Total Time Saved</div>
-            <div id="bizTotalTimeSaved" class="text-2xl font-extrabold text-emerald-400 mt-1 mono">0m</div>
-          </div>
-          <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4">
-            <div class="text-[11px] text-slate-400">Est. Business Value Created</div>
-            <div id="bizTotalValueCreated" class="text-2xl font-extrabold text-white mt-1 mono">$0</div>
-          </div>
-        </div>
-      </div>
-
-      <div id="workspaceEmptyState" class="hidden bg-slate-900/50 border border-slate-800 rounded-2xl p-8 text-center">
-        <h3 class="text-base font-bold text-white">You haven't subscribed to any AI Agents yet</h3>
-        <p class="text-xs text-slate-400 mt-1.5 max-w-md mx-auto">
-          Browse the Agent Market to hire an autonomous AI agent for your business and track its live ROI and daily task performance here.
-        </p>
-        <button type="button" onclick="switchView('marketplace')" class="mt-4 selgo-blue-btn text-white font-semibold text-xs px-5 py-2.5 rounded-full">
-          Explore Agent Market
-        </button>
-      </div>
-
-      <div id="workspaceActiveContainer" class="hidden">
-        <div class="flex items-center gap-2 overflow-x-auto pb-4 mb-6 border-b border-slate-800" id="mySubSwitcherBar"></div>
-
-        <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 mb-6 gap-4">
-          <div class="flex items-center gap-4">
-            <img id="wsDevAvatar" src="https://api.dicebear.com/9.x/shapes/svg?seed=Agent" class="w-12 h-12 rounded-2xl object-cover border border-slate-700" />
-            <div>
-              <div class="inline-flex items-center gap-2 text-[11px] text-emerald-400 font-semibold">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                PERFORMING LIVE FOR YOUR BUSINESS
-                <span id="wsInvoiceBadge" class="text-slate-500 mono ml-1"></span>
-              </div>
-              <h2 id="wsAgentName" class="text-xl sm:text-2xl font-bold text-white"></h2>
-              <p id="wsBusinessInfo" class="text-xs text-slate-400"></p>
-            </div>
-          </div>
-
-          <button type="button" onclick="startLiveVoiceCall('agent')"
-            class="h-10 px-4 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-700/80 hover:border-blue-500/60 text-slate-100 font-medium text-xs flex items-center gap-2.5 transition group self-start md:self-auto">
-            <svg class="w-4 h-4 text-blue-400 group-hover:scale-110 transition" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <line x1="4" y1="10" x2="4" y2="14"/>
-              <line x1="8" y1="6" x2="8" y2="18"/>
-              <line x1="12" y1="3" x2="12" y2="21"/>
-              <line x1="16" y1="6" x2="16" y2="18"/>
-              <line x1="20" y1="10" x2="20" y2="14"/>
-            </svg>
-            <span>Live Voice Call</span>
-          </button>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div class="lg:col-span-7 bg-slate-900/50 border border-slate-800 rounded-2xl flex flex-col h-[520px] sm:h-[580px]">
-            <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between">
-              <span class="text-xs font-semibold text-slate-300">Direct Agent Conversation & Task Execution</span>
-              <span id="wsSpeed" class="text-[11px] text-slate-500 mono">Ready</span>
-            </div>
-
-            <div id="wsChatStream" class="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4"></div>
-
-            <div class="p-3.5 border-t border-slate-800/80 bg-slate-950/60 rounded-b-2xl">
-              <form onsubmit="sendWorkspaceAgentMessage(event)"
-                class="bg-slate-900 border border-slate-800 focus-within:border-slate-700 rounded-[28px] flex items-center pl-4 sm:pl-5 pr-2 py-1.5 transition">
-                <input
-                  id="wsChatInput"
-                  type="text"
-                  autocomplete="off"
-                  placeholder="Assign a task or talk to your purchased agent..."
-                  class="flex-1 bg-transparent text-sm text-white placeholder-slate-500 py-2 focus:outline-none"
-                />
-                <div class="flex items-center gap-1.5 shrink-0 ml-2">
-                  <button type="button" id="wsMicBtn" onclick="toggleDictation('wsChatInput', 'wsMicBtn')"
-                    title="Voice input"
-                    class="w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800/70 transition">
-                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="9" y="2" width="6" height="11" rx="3"/>
-                      <path d="M5 10a7 7 0 0 0 14 0"/>
-                      <line x1="12" y1="17" x2="12" y2="21"/>
-                    </svg>
-                  </button>
-
-                  <button type="submit"
-                    title="Send message"
-                    class="w-10 h-10 rounded-full bg-[#93C5FD] hover:bg-[#60A5FA] text-slate-950 flex items-center justify-center transition shadow-sm">
-                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <line x1="12" y1="19" x2="12" y2="5"/>
-                      <polyline points="5 12 12 5 19 12"/>
-                    </svg>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          <div class="lg:col-span-5 space-y-4">
-            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
-              <div class="flex items-center justify-between mb-2 gap-2">
-                <div>
-                  <h3 class="text-xs uppercase tracking-wider text-blue-400 font-semibold">Company Knowledge Base</h3>
-                  <p class="text-[11px] text-slate-400">Upload a file or paste your pricing, inventory, or SOPs.</p>
-                </div>
-                <label class="text-[11px] bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-full cursor-pointer flex items-center gap-1.5 transition shrink-0">
-                  <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="17 8 12 3 7 8"/>
-                    <line x1="12" y1="3" x2="12" y2="15"/>
-                  </svg>
-                  <span>Upload File</span>
-                  <input type="file" accept=".txt,.csv,.json,.md" onchange="handleKnowledgeFileUpload(event)" class="hidden" />
-                </label>
-              </div>
-
-              <textarea id="wsKnowledgeTextarea" rows="4"
-                placeholder="Paste your company prices, product catalog, schedules, or rules here so your agent knows your exact data..."
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-blue-500 mt-1"></textarea>
-
-              <div class="flex items-center justify-between mt-2.5">
-                <span id="wsKnowledgeStatus" class="text-[11px] text-slate-500">Synced with Agent Brain</span>
-                <button type="button" onclick="saveWorkspaceKnowledgeBase()"
-                  class="selgo-blue-btn text-white font-semibold text-xs px-4 py-1.5 rounded-full transition">
-                  Sync to Agent Brain
-                </button>
-              </div>
-            </div>
-
-            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
-              <h3 class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-3">This Agent's Performance</h3>
-              <div class="grid grid-cols-2 gap-3">
-                <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
-                  <div class="text-[11px] text-slate-400">Tasks Automated</div>
-                  <div id="wsTasksCount" class="text-xl font-bold text-white mt-0.5 mono">0</div>
-                </div>
-                <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
-                  <div class="text-[11px] text-slate-400">Time Saved</div>
-                  <div id="wsTimeSaved" class="text-xl font-bold text-blue-400 mt-0.5 mono">0m</div>
-                </div>
-                <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
-                  <div class="text-[11px] text-slate-400">Est. Value Created</div>
-                  <div id="wsValueCreated" class="text-lg font-bold text-white mt-0.5 mono">$0</div>
-                </div>
-                <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
-                  <div class="text-[11px] text-slate-400">Selgo Security</div>
-                  <div class="text-xs font-semibold text-emerald-400 mt-1.5 flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> SHA-256 Verified
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
-              <h3 class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2.5">Latest Worker Telemetry</h3>
-              <div id="wsResultCards" class="space-y-2 text-xs text-slate-400">
-                Send a message or speak to your agent to see live execution output.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- =================================================================== -->
-    <!-- VIEW 4: AI DEVELOPER STUDIO — EARNINGS, BUYERS & PUBLISHED AGENTS   -->
-    <!-- =================================================================== -->
-    <section id="viewDeveloper" class="hidden max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 fade-in">
-
-      <div id="devOnboardingBox" class="hidden bg-slate-900/70 border border-slate-800 rounded-2xl p-6 sm:p-8 max-w-xl mx-auto">
-        <div class="text-xs uppercase tracking-widest text-blue-400 font-semibold mb-1">Developer Studio Setup</div>
-        <h2 class="text-2xl font-bold text-white">Set Up Your Selgo Developer Profile</h2>
-        <p class="text-xs text-slate-400 mt-1 mb-6">
-          Set up your creator identity once. Every AI Agent you publish appears in the Agent Market and pays you 75% of every subscription.
-        </p>
-
-        <form onsubmit="saveDeveloperProfile(event)" class="space-y-5">
-          <div class="flex flex-col items-center justify-center py-2">
-            <label for="avatarFileInput" class="relative group cursor-pointer">
-              <img id="devAvatarPreview"
-                src="https://api.dicebear.com/9.x/initials/svg?seed=Creator&backgroundColor=0f172a"
-                alt="Creator Avatar"
-                class="w-24 h-24 rounded-full object-cover border-2 border-slate-700 group-hover:border-blue-500 bg-slate-950 transition shadow-xl" />
-              <div class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-blue-600 border-2 border-[#050811] flex items-center justify-center text-white shadow-lg">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
-                  <circle cx="12" cy="13" r="3"/>
-                </svg>
-              </div>
-              <input id="avatarFileInput" type="file" accept="image/*" onchange="handleAvatarFileUpload(event)" class="hidden" />
-            </label>
-            <span class="text-[11px] text-slate-400 mt-2">Tap the camera to upload your photo</span>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="text-xs text-slate-400 block mb-1">Display Name</label>
-              <input id="devDisplayName" type="text" required placeholder="e.g., Imran Mohamedbeyan"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500" />
-            </div>
-            <div>
-              <label class="text-xs text-slate-400 block mb-1">Unique Handle (@username)</label>
-              <input id="devUsername" type="text" required placeholder="e.g., imran_ai"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500" />
-            </div>
-          </div>
-
-          <div>
-            <label class="text-xs text-slate-400 block mb-1">Professional Headline</label>
-            <input id="devHeadline" type="text" required placeholder="e.g., AI Systems Architect & Co-Founder"
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500" />
-          </div>
-
-          <div>
-            <label class="text-xs text-slate-400 block mb-1">Bio / About You</label>
-            <textarea id="devBio" rows="3" required placeholder="Tell businesses about your background and the AI systems you build..."
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-blue-500"></textarea>
-          </div>
-
-          <div>
-            <label class="text-xs text-slate-400 block mb-1">Core Skills (Comma separated)</label>
-            <input id="devSkills" type="text" required placeholder="e.g., Python, Autonomous Agents, Voice Systems"
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500" />
-          </div>
-
-          <button type="submit" class="w-full selgo-blue-btn text-white font-semibold text-xs py-3.5 rounded-full transition">
-            Complete Developer Studio Setup
-          </button>
-        </form>
-      </div>
-
-      <!-- PERMANENT SELGO DEVELOPER STUDIO & EARNINGS PAGE -->
-      <div id="devCreatorProfile" class="hidden space-y-8">
-        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden">
-          <div class="h-24 bg-gradient-to-r from-blue-900/80 via-slate-900 to-slate-950 border-b border-slate-800/80"></div>
-          <div class="px-5 sm:px-7 pb-7">
-            <div class="flex flex-col sm:flex-row sm:items-end justify-between -mt-10 gap-4">
-              <div class="flex items-end gap-4">
-                <img id="liAvatar" src="" class="w-20 h-20 rounded-full object-cover border-4 border-[#050811] bg-slate-900 shadow-xl" />
-                <div class="pb-1">
-                  <h2 id="liName" class="text-xl font-bold text-white"></h2>
-                  <p id="liHeadline" class="text-xs text-slate-300 mt-0.5"></p>
-                  <span id="liHandle" class="text-[11px] text-blue-400 mono"></span>
-                </div>
-              </div>
-
-              <div class="flex items-center gap-2.5">
-                <button type="button" onclick="openEditProfile()"
-                  class="text-xs text-slate-400 hover:text-white border border-slate-800 px-4 py-2 rounded-full transition">
-                  Edit Profile
-                </button>
-                <button type="button" onclick="togglePostAgentForm()"
-                  class="selgo-blue-btn text-white font-semibold text-xs px-5 py-2.5 rounded-full transition">
-                  + Post New AI Agent
-                </button>
-              </div>
-            </div>
-
-            <p id="liBio" class="text-xs text-slate-300 mt-5 leading-relaxed max-w-2xl"></p>
-            <div id="liSkills" class="flex flex-wrap gap-1.5 mt-4"></div>
-
-            <!-- Developer Financial & Buyer Ledger Bar -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-5 border-t border-slate-800/80">
-              <div>
-                <div class="text-[11px] text-slate-400">Published Agents</div>
-                <div id="liAgentCount" class="text-lg font-bold text-white mt-0.5 mono">0</div>
-              </div>
-              <div>
-                <div class="text-[11px] text-slate-400">Total Agent Sales</div>
-                <div id="liGrossSales" class="text-lg font-bold text-slate-200 mt-0.5 mono">$0.00</div>
-              </div>
-              <div>
-                <div class="text-[11px] text-slate-400">Your Earnings (75%)</div>
-                <div id="liAvailableBalance" class="text-lg font-bold text-emerald-400 mt-0.5 mono">$0.00</div>
-              </div>
-              <div>
-                <div class="text-[11px] text-slate-400">Security Trust Score</div>
-                <div id="liTrust" class="text-lg font-bold text-blue-400 mt-0.5 mono">100%</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- POST NEW AI AGENT COMPOSER -->
-        <div id="postAgentComposer" class="hidden bg-slate-900/80 border border-blue-500/40 rounded-2xl p-5 sm:p-7 fade-in">
-          <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-5">
-            <div>
-              <h3 class="text-base font-semibold text-white">Post a New Conversational & Task AI Agent</h3>
-              <p class="text-xs text-slate-400">Starts at 0 likes and appears in the Agent Market under your profile.</p>
-            </div>
-            <button type="button" onclick="togglePostAgentForm()" class="w-8 h-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 flex items-center justify-center">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                <path d="M18 6L6 18M6 6l12 12"/>
-              </svg>
-            </button>
-          </div>
-
-          <form onsubmit="publishNewAgent(event)" class="space-y-4">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div class="sm:col-span-2">
-                <label class="text-xs text-slate-400 block mb-1">Agent Name</label>
-                <input id="agName" type="text" required placeholder="e.g., CloseFlow Sales & Lead Concierge"
-                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white" />
-              </div>
-              <div>
-                <label class="text-xs text-slate-400 block mb-1">Monthly Subscription (USD)</label>
-                <input id="agPrice" type="number" required min="1" placeholder="49"
-                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="text-xs text-slate-400 block mb-1">Target Field / Sector</label>
-                <input id="agIndustry" type="text" required placeholder="e.g., Clinic, Software Engineering, Sales, Real Estate"
-                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white" />
-              </div>
-              <div>
-                <label class="text-xs text-slate-400 block mb-1">Short Headline Tagline</label>
-                <input id="agTagline" type="text" required placeholder="e.g., Automates daily workflows and client responses 24/7."
-                  class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white" />
-              </div>
-            </div>
-
-            <div>
-              <label class="text-xs text-slate-400 block mb-1">Agent Persona & Expertise Instructions (System Prompt)</label>
-              <textarea id="agSystemPrompt" rows="2" required
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white">You are a dedicated AI specialist working inside this business. Give actionable calculations, draft high-converting client responses, and execute tasks accurately.</textarea>
-            </div>
-
-            <div>
-              <label class="text-xs text-slate-400 block mb-1">Full Capabilities Description</label>
-              <textarea id="agDescription" rows="2" required placeholder="Describe everything this agent does for the subscriber..."
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white"></textarea>
-            </div>
-
-            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
-              <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-                <label class="text-xs font-medium text-slate-300">Python `AgentWorker` Logic (or upload `.py`)</label>
-                <div class="flex items-center gap-3">
-                  <label class="text-xs bg-slate-800 hover:bg-slate-700 text-white px-3.5 py-1.5 rounded-full cursor-pointer flex items-center gap-1.5 transition">
-                    <svg class="w-3.5 h-3.5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                      <polyline points="17 8 12 3 7 8"/>
-                      <line x1="12" y1="3" x2="12" y2="15"/>
-                    </svg>
-                    <span>Upload .py File</span>
-                    <input type="file" accept=".py,.txt" onchange="handlePythonFileUpload(event)" class="hidden" />
-                  </label>
-                  <button type="button" onclick="insertStarterTemplate()" class="text-xs text-blue-400 hover:underline">
-                    + Load Smart AI Worker Template
-                  </button>
-                </div>
-              </div>
-              <textarea id="agCode" rows="7" required placeholder="Click '+ Load Smart AI Worker Template'..."
-                class="w-full bg-black border border-slate-800 rounded-lg p-3 text-xs mono text-blue-300 focus:outline-none"></textarea>
-            </div>
-
-            <button type="submit" class="w-full selgo-blue-btn text-white font-semibold text-xs py-3 rounded-full transition">
-              Verify Security & Publish to Agent Market
-            </button>
-          </form>
-
-          <div id="agDeployStatus" class="hidden mt-4 p-3.5 rounded-xl text-xs whitespace-pre-line"></div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div class="lg:col-span-7">
-            <h3 class="text-sm font-semibold text-slate-300 mb-4">AI Agents Published by You</h3>
-            <div id="liPostedAgentsFeed" class="space-y-3"></div>
-          </div>
-
-          <div class="lg:col-span-5 space-y-6">
-            <div>
-              <h3 class="text-sm font-semibold text-slate-300 mb-3">Who Bought Your Agents (Your 75% Share)</h3>
-              <div id="liSubscriberLedger" class="space-y-2.5 text-xs text-slate-400"></div>
-            </div>
-
-            <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
-              <h3 class="text-xs uppercase tracking-wider text-blue-400 font-semibold mb-1">Developer Payout Wallet</h3>
-              <p class="text-[11px] text-slate-400 mb-4">Withdraw your 75% creator earnings directly to your bank or mobile wallet.</p>
-
-              <form onsubmit="submitCreatorPayout(event)" class="space-y-3">
-                <div>
-                  <label class="text-[11px] text-slate-400 block mb-1">Payout Method</label>
-                  <select id="payoutMethodInput" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                    <option value="Telebirr Wallet">Telebirr Wallet</option>
-                    <option value="Commercial Bank (CBE)">Commercial Bank (CBE)</option>
-                    <option value="Chapa Direct Transfer">Chapa Direct Transfer</option>
-                    <option value="International Wire / Wise">International Wire / Wise</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="text-[11px] text-slate-400 block mb-1">Account / Phone / IBAN</label>
-                  <input id="payoutAccountInput" type="text" required placeholder="Enter destination account or phone..."
-                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
-                </div>
-                <button type="submit" class="w-full selgo-blue-btn text-white font-semibold text-xs py-2.5 rounded-full transition">
-                  Withdraw Available Balance
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- =================================================================== -->
-    <!-- VIEW 5: MY ACCOUNT, LOCKED ROLE INFO, PASSWORD CHANGE & LOG OUT     -->
-    <!-- =================================================================== -->
-    <section id="viewAccount" class="hidden max-w-2xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 fade-in space-y-6">
-      <div>
-        <div class="text-[11px] uppercase tracking-widest text-blue-400 font-semibold">Account & Security</div>
-        <h2 class="text-2xl font-bold text-white mt-0.5">About Your Account</h2>
-        <p class="text-xs text-slate-400 mt-1">Manage your identity, password, and active session.</p>
-      </div>
-
-      <!-- PROFILE & LOCKED ROLE CARD -->
-      <div class="bg-slate-900/75 border border-slate-800 rounded-2xl p-6 space-y-5">
-        <div class="flex items-center justify-between gap-4 flex-wrap">
-          <div class="flex items-center gap-4">
-            <img id="acctPageAvatar" src="https://api.dicebear.com/9.x/initials/svg?seed=S&backgroundColor=0f172a" class="w-16 h-16 rounded-full object-cover border-2 border-slate-700" />
-            <div>
-              <h3 id="acctPageFullName" class="text-lg font-bold text-white"></h3>
-              <p id="acctPageEmail" class="text-xs text-slate-400 mono"></p>
-              <div class="flex items-center gap-2 mt-1.5">
-                <span id="acctPageRoleBadge" class="inline-block text-[11px] bg-blue-500/15 border border-blue-500/30 text-blue-400 px-3 py-0.5 rounded-full font-semibold"></span>
-                <span class="text-[11px] text-slate-500">• Locked
+          <span id="sandboxSpeedBadge" class="mono text-slate-5
