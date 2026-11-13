@@ -2,20 +2,40 @@ from datetime import datetime, timezone
 import os
 import shutil
 from typing import Generator
+from urllib.parse import quote_plus, unquote, urlsplit, urlunsplit
 from dotenv import load_dotenv
 from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text, create_engine, text
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 load_dotenv()
 
-raw_db_url = (
-    os.getenv("DATABASE_URL")
-    or os.getenv("database_url")
-    or ""
-).strip().strip('"').strip("'")
 
-if raw_db_url.startswith("postgres://"):
-    raw_db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
+def _normalize_postgres_url(raw_url: str) -> str:
+    url = (raw_url or "").strip().strip('"').strip("'")
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    if not url.startswith("postgresql://"):
+        return url
+    try:
+        parts = urlsplit(url)
+        if "@" in parts.netloc:
+            userinfo, hostinfo = parts.netloc.rsplit("@", 1)
+            if ":" in userinfo:
+                user, raw_pw = userinfo.split(":", 1)
+                clean_pw = quote_plus(unquote(raw_pw))
+                netloc = f"{user}:{clean_pw}@{hostinfo}"
+                query = parts.query
+                if "sslmode=" not in query:
+                    query = f"{query}&sslmode=require" if query else "sslmode=require"
+                return urlunsplit((parts.scheme, netloc, parts.path, query, parts.fragment))
+    except Exception:
+        pass
+    return url
+
+
+raw_db_url = _normalize_postgres_url(
+    os.getenv("DATABASE_URL") or os.getenv("database_url") or ""
+)
 
 Base = declarative_base()
 
@@ -44,11 +64,12 @@ try:
         or "]" in raw_db_url
         or raw_db_url.startswith("sqlite")
     ):
-        raise ValueError("Using writable SQLite engine")
-    engine = create_engine(raw_db_url, pool_pre_ping=True)
+        raise ValueError("DATABASE_URL not set to PostgreSQL; using local/tmp SQLite")
+    engine = create_engine(raw_db_url, pool_pre_ping=True, pool_recycle=300)
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
     DATABASE_URL = raw_db_url
+    print("Connected permanently to Supabase PostgreSQL")
 except Exception as engine_err:
     print("Switching to writable SQLite fallback:", engine_err)
     DATABASE_URL, engine = _create_writable_sqlite_engine()
@@ -110,7 +131,7 @@ class AgentModel(Base):
     )
     input_label = Column(String(120), default="Talk to your agent or assign a task...", nullable=False)
     monthly_price_cents = Column(Integer, nullable=False)
-    selgo_fee_percent = Column(Integer, default=25, nullable=False)
+    selgo_fee_percent = Column(Integer, default=20, nullable=False)
     python_code = Column(Text, nullable=False)
     sha256_fingerprint = Column(String(64), nullable=False)
     status = Column(String(30), default="PUBLISHED", nullable=False)
