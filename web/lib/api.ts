@@ -125,6 +125,23 @@ export type ReactionResult = {
   boosts: number;
 };
 
+// trial_ended: the free trial is over and nothing has been paid yet.
+export type SubscriptionStatus = "trial" | "active" | "trial_ended" | "cancelled";
+
+export type Subscription = {
+  id: number;
+  status: SubscriptionStatus;
+  can_use: boolean;
+  trial_days_left: number | null;
+  monthly_price: number;
+  business_context: string;
+  custom_instructions: string;
+  created_at: string;
+  agent: AgentCard;
+};
+
+export type WorkspaceMessage = { id: number; role: ChatRole; content: string; created_at: string };
+
 export type AgentComment = {
   id: number;
   agent_id: number;
@@ -234,5 +251,27 @@ export const api = {
     request<{ reply: string }>(`/agents/${agentId}/preview`, {
       method: "POST",
       body: { message, history },
+    }),
+
+  // My Business Agents (subscriptions)
+  subscriptions: () => request<Subscription[]>("/workspace/subscriptions"),
+
+  subscription: (id: number) => request<Subscription>(`/workspace/subscriptions/${id}`),
+
+  subscribe: (agentId: number) =>
+    request<Subscription>("/workspace/subscriptions", { method: "POST", body: { agent_id: agentId } }),
+
+  updateSubscription: (id: number, body: { business_context?: string; custom_instructions?: string }) =>
+    request<Subscription>(`/workspace/subscriptions/${id}`, { method: "PATCH", body }),
+
+  cancelSubscription: (id: number) =>
+    request<Message>(`/workspace/subscriptions/${id}`, { method: "DELETE" }),
+
+  workspaceMessages: (id: number) => request<WorkspaceMessage[]>(`/workspace/subscriptions/${id}/messages`),
+
+  workspaceChat: (id: number, message: string) =>
+    request<{ question: WorkspaceMessage; reply: WorkspaceMessage }>(`/workspace/subscriptions/${id}/chat`, {
+      method: "POST",
+      body: { message },
     }),
 };

@@ -1,0 +1,12 @@
+# SAMPLE AGENT for testing recommendations. Delete before launch.
+
+name = "Social Media Content Planner"
+industry = "Marketing"
+tagline = "Plan a month of posts your customers actually want to see"
+description = """
+Turns what your customers ask and care about into a simple posting plan:
+what to post, when, and on which platform, so you stay visible without
+spending hours every day.
+"""
+monthly_price = 12
+published = true

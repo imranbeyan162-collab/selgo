@@ -23,12 +23,13 @@ from .models import Agent
 from .mentor import router as mentor_router
 from .registry import sync_agents
 from .session import router as profile_router
+from .workspace import router as workspace_router
 
 logger = logging.getLogger("uvicorn.error")
 
 # Which update this code came from. /health shows it, so you can always check
 # that the server is really running the latest code you unpacked.
-BUILD = "selgo-rebuild-12"
+BUILD = "selgo-rebuild-14"
 
 # Create any missing tables. Existing tables and their data are left untouched.
 Base.metadata.create_all(bind=engine)
@@ -70,6 +71,7 @@ app.add_middleware(
 app.include_router(profile_router)
 app.include_router(mentor_router)
 app.include_router(agents_router)
+app.include_router(workspace_router)
 
 
 @app.get("/", tags=["system"])

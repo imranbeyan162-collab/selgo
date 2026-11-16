@@ -4,9 +4,15 @@
 Every visitor has a profile (see session.py), so every conversation is saved
 from the first message and appears under Saved chats in the drawer.
 
-The mentor is also Selgo's matchmaker. It is shown the agents published in
-the market, and once it understands the person's problem it recommends the
-best-fitting ones, whether they are trained on an expert or built by Selgo.
+The mentor is also Selgo's matchmaker, in two phases:
+
+1. Discovery. For the first DISCOVERY_TURNS messages of a conversation the
+   mentor is not shown any agents at all. It can only ask questions and learn
+   the business, and on its last discovery reply it sums up what it understood.
+2. Recommending. After that (or earlier, if the person explicitly asks for
+   agents) it is shown the market and recommends every agent that fits the
+   problem, best fit first, whether trained on an expert or built by Selgo.
+
 It marks its picks with a hidden line like [[agents: slug-one, slug-two]];
 this file removes that line, keeps only real published agents, and sends
 them back as agent cards.
@@ -44,7 +50,10 @@ MAX_HISTORY = 20
 # How many agents the mentor is shown per answer. With more agents published,
 # the ones closest to the conversation are picked.
 MAX_CATALOG = 12
-MAX_RECOMMENDATIONS = 3
+MAX_RECOMMENDATIONS = 6
+# How many of the person's messages the mentor answers with questions before
+# it may recommend agents. The depth is enforced here, not left to the AI.
+DISCOVERY_TURNS = 3
 
 MENTOR_PROMPT = (
     "You are Selgo AI Mentor, a practical business mentor inside Selgo. Selgo "
@@ -59,19 +68,45 @@ MENTOR_PROMPT = (
     "line starting with a dash."
 )
 
+DISCOVERY_RULES = (
+    "You are still getting to know this business, so do not recommend any "
+    "agents, tools or products yet, and don't mention Selgo's agents. Build a "
+    "full picture of: what the business does and sells, who its customers are, "
+    "its size and team, how the work is done today and with which tools, the "
+    "exact problem and where it shows up, what they have already tried, and "
+    "what result they want. Each reply: briefly reflect what you learned, add "
+    "one useful insight when you have one, then ask one or two focused "
+    "questions about what you still don't know."
+)
+
+DISCOVERY_LAST_ROUND = (
+    "This is your last discovery reply. Sum up what you understood in two or "
+    "three short lines (the business, the real problem, the result they want), "
+    "ask them to confirm or correct it, and tell them that next you will show "
+    "the agents that fit."
+)
+
 RECOMMEND_RULES = (
-    "Recommending agents: first make sure you understand the business and its "
-    "main problem; ask short questions until you do (usually two or three "
-    "exchanges). Then, if an agent in the list clearly fits, recommend the best "
-    "one or two (three at most). The best fit wins, whether or not it is trained "
-    "on an expert. Name each one and say in one sentence why it fits this "
-    "business. Never invent agents or recommend anything that isn't in the list. "
-    "If nothing in the list fits, say Selgo doesn't have that agent yet and "
-    "describe what kind of agent would help. Don't repeat a recommendation you "
-    "already made unless the user asks. "
+    "You now understand the business well enough to recommend agents. Recommend "
+    "every agent in the list that genuinely fits this business's problem, best "
+    "fit first, up to six. The best fit wins, whether or not it is trained on an "
+    "expert. Start with one line on what you understood, then name the best fit "
+    "and say in one sentence why, then name each other fitting agent with what "
+    "it would take care of. Never add agents that don't fit just to show more. "
+    "Never invent agents or recommend anything that isn't in the list. If "
+    "nothing in the list fits, say Selgo doesn't have that agent yet and "
+    "describe what kind of agent would help. Keep helping after recommending. "
+    "Don't repeat recommendations you already made unless the user asks or "
+    "brings up a new problem. "
     "Whenever you recommend agents, end your reply with one last line in exactly "
     "this form, using slugs from the list: [[agents: slug-one, slug-two]]. Never "
     "write that line at any other time."
+)
+
+# The person asking outright to see agents unlocks recommendations early.
+ASKS_FOR_AGENTS = re.compile(
+    r"\b(?:which|what|show(?: me)?|recommend|suggest|any|best|list)\b[^.?!\n]{0,40}\bagents?\b",
+    re.IGNORECASE,
 )
 
 # The hidden line the mentor adds when it recommends agents.
@@ -89,6 +124,22 @@ def _daily_limit() -> int:
 
 
 # ---------- Recommendations ----------
+
+
+def recommending_now(user_messages: int, message: str) -> bool:
+    """True once discovery is over: user_messages counts the person's messages
+    in this conversation, including the one being answered."""
+    return user_messages > DISCOVERY_TURNS or bool(ASKS_FOR_AGENTS.search(message))
+
+
+def phase_instructions(user_messages: int, message: str, catalog: Sequence[Agent]) -> str:
+    """Everything the mentor is told for this answer, depending on the phase."""
+    if recommending_now(user_messages, message):
+        return "\n\n".join([MENTOR_PROMPT, RECOMMEND_RULES, catalog_text(catalog)])
+    parts = [MENTOR_PROMPT, DISCOVERY_RULES]
+    if user_messages == DISCOVERY_TURNS:
+        parts.append(DISCOVERY_LAST_ROUND)
+    return "\n\n".join(parts)
 
 
 def split_recommendations(text: str, allowed: Sequence[str]) -> Tuple[str, List[str]]:
@@ -229,20 +280,26 @@ def chat(
     db: Session = Depends(get_db),
 ) -> MentorChatOut:
     session = None
-    earlier: List[ChatMessage] = []
+    everything: List[ChatMessage] = []
     if payload.session_id is not None:
         session = _get_session_or_404(db, payload.session_id, profile)
-        earlier = _load_messages(db, session.id)[-MAX_HISTORY:]
+        everything = _load_messages(db, session.id)
+    earlier = everything[-MAX_HISTORY:]
     history = [_history_turn(message) for message in earlier]
 
     _check_daily_limit(db, profile)
 
-    said_by_user = " ".join(m.content for m in earlier if m.role == "user")
-    catalog = _catalog(db, f"{said_by_user} {payload.message}")
-    instructions = "\n\n".join([MENTOR_PROMPT, RECOMMEND_RULES, catalog_text(catalog)])
+    user_messages = sum(1 for m in everything if m.role == "user") + 1  # + this one
+    recommending = recommending_now(user_messages, payload.message)
+    catalog: List[Agent] = []
+    if recommending:
+        said_by_user = " ".join(m.content for m in everything if m.role == "user")
+        catalog = _catalog(db, f"{said_by_user} {payload.message}")
+    instructions = phase_instructions(user_messages, payload.message, catalog)
 
     # Ask first, save second: a failed AI call never leaves a half-saved chat.
     answer = reply_or_502(instructions, history, payload.message)
+    # During discovery nothing is allowed, so any stray picks are dropped.
     reply, picked = split_recommendations(answer, [agent.slug for agent in catalog])
     if not reply:
         reply = "These agents fit what you described:" if picked else "Could you tell me a bit more?"

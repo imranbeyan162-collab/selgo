@@ -1,0 +1,13 @@
+# SAMPLE AGENT for testing recommendations. Delete before launch.
+# Unrelated to marketing on purpose: it should NOT be recommended for a
+# marketing problem.
+
+name = "Inventory Planner"
+industry = "Retail"
+tagline = "Order the right stock at the right time"
+description = """
+Tracks how fast each product sells and tells you what to reorder and when,
+so you stop running out of best sellers and stop overstocking slow ones.
+"""
+monthly_price = 15
+published = true

@@ -1,8 +1,9 @@
 # api/app/models.py
 """SQLAlchemy models.
 
-Visitor profiles, saved mentor chats, and Selgo's agents with their
-comments, reactions and knowledge library. Subscriptions come later.
+Visitor profiles, saved mentor chats, Selgo's agents with their comments,
+reactions and knowledge library, and subscriptions: each business's own
+private copy of an agent, with its settings and conversation memory.
 
 Agents are published only by Selgo itself, so visitors have no roles:
 every profile is a business using Selgo.
@@ -192,3 +193,56 @@ class KnowledgeChunk(Base):
     text: Mapped[str] = mapped_column(Text)
 
     document: Mapped["AgentKnowledge"] = relationship(back_populates="chunks")
+
+
+class Subscription(Base):
+    """A business's own copy of an agent: its settings and its conversation
+    memory (and, with the tracker, its performance reports). Many businesses
+    can subscribe to the same agent; each copy is private to its owner."""
+
+    __tablename__ = "subscriptions"
+    __table_args__ = (
+        UniqueConstraint("profile_id", "agent_id", name="uq_profile_agent_subscription"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profile_id: Mapped[int] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    agent_id: Mapped[int] = mapped_column(
+        ForeignKey("agents.id", ondelete="CASCADE"), index=True
+    )
+    # "trial", "active" or "cancelled". An expired trial is worked out from
+    # trial_ends_at, so nothing has to run at midnight to end it.
+    status: Mapped[str] = mapped_column(String(16), default="trial")
+    # The price when they subscribed, so a later price change doesn't surprise them.
+    price_cents: Mapped[int] = mapped_column(default=0)
+    trial_ends_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime, default=None)
+    # What the owner told this copy about their business, and how it should work.
+    business_context: Mapped[str] = mapped_column(Text, default="")
+    custom_instructions: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    cancelled_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime, default=None)
+
+    agent: Mapped["Agent"] = relationship()
+    messages: Mapped[List["WorkspaceMessage"]] = relationship(
+        back_populates="subscription", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class WorkspaceMessage(Base):
+    """One message between a business and its copy of an agent. These are the
+    agent's memory, and what the tracker will review."""
+
+    __tablename__ = "workspace_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    subscription_id: Mapped[int] = mapped_column(
+        ForeignKey("subscriptions.id", ondelete="CASCADE"), index=True
+    )
+    role: Mapped[str] = mapped_column(String(16))  # "user" or "assistant"
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+
+    subscription: Mapped["Subscription"] = relationship(back_populates="messages")

@@ -1,0 +1,11 @@
+# SAMPLE AGENT for testing recommendations. Delete before launch.
+
+name = "Pricing Advisor"
+industry = "Sales"
+tagline = "Set prices that cover your costs and win customers"
+description = """
+Works out what each product really costs you, where your prices should sit,
+and how bundles or offers can raise sales without giving away your margin.
+"""
+monthly_price = 19
+published = true

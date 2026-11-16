@@ -54,5 +54,6 @@ there is one, stays as it was.
 - **Keep the GitHub repo private.** Agent instructions and expert knowledge
   are your product. In a public repo, anyone can read them.
 - **Encoding**: save every file as UTF-8, which is VS Code's default.
-- **Sample**: `growth-marketing-coach` is a made-up sample for testing.
-  Delete it before launch.
+- **Samples**: `growth-marketing-coach`, `social-media-content-planner`,
+  `pricing-advisor` and `inventory-planner` are made-up samples for testing
+  the market and the mentor's recommendations. Delete them before launch.

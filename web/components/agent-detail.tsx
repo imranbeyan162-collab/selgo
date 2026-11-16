@@ -7,10 +7,10 @@ import { useEffect, useState } from "react";
 
 import { api, ApiError, type AgentCard } from "../lib/api";
 import { formatPrice, formatSources } from "../lib/format";
-import { PRIMARY_BUTTON } from "../lib/styles";
 import { AgentComments } from "./agent-comments";
 import { AgentPortrait } from "./agent-portrait";
 import { ReactionBar } from "./reaction-bar";
+import { SubscribeButton } from "./subscribe-button";
 import { TryAgent } from "./try-agent";
 
 // One agent's page: who it is, what it does, a live preview and comments.
@@ -90,13 +90,11 @@ export function AgentDetail() {
           <p className="text-lg font-semibold text-white">{formatPrice(agent.monthly_price)}</p>
           <p className="text-sm text-muted">{formatSources(agent.knowledge_sources)}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-start gap-3">
           <div className="-ml-2.5 sm:ml-0">
             <ReactionBar agent={agent} showComments={false} />
           </div>
-          <button type="button" disabled className={PRIMARY_BUTTON} title="Subscriptions open soon">
-            Subscriptions open soon
-          </button>
+          <SubscribeButton agent={agent} />
         </div>
       </div>
 

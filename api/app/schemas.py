@@ -171,6 +171,54 @@ class PreviewOut(BaseModel):
     reply: str
 
 
+# ---------- Workspace (subscriptions) ----------
+
+# trial_ended: the free trial is over and nothing has been paid yet.
+SubscriptionStatus = Literal["trial", "active", "trial_ended", "cancelled"]
+
+
+class SubscribeIn(BaseModel):
+    agent_id: int
+
+
+class SubscriptionOut(BaseModel):
+    id: int
+    status: SubscriptionStatus
+    can_use: bool  # False when the trial ended, it's cancelled, or the agent was withdrawn
+    trial_days_left: Optional[int] = None
+    monthly_price: float  # the price when they subscribed
+    business_context: str
+    custom_instructions: str
+    created_at: datetime
+    agent: AgentOut
+
+
+class SubscriptionSettingsIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    business_context: Optional[str] = Field(default=None, max_length=4000)
+    custom_instructions: Optional[str] = Field(default=None, max_length=4000)
+
+
+class WorkspaceChatIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    message: str = Field(min_length=1, max_length=4000)
+
+
+class WorkspaceMessageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    role: ChatRole
+    content: str
+    created_at: datetime
+
+
+class WorkspaceChatOut(BaseModel):
+    reply: WorkspaceMessageOut
+    question: WorkspaceMessageOut
+
 # The chat schemas above refer to AgentOut, which is defined further down.
 MentorChatOut.model_rebuild()
 ChatMessageOut.model_rebuild()
