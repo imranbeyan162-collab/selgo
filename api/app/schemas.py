@@ -2,11 +2,9 @@
 """Pydantic v2 request and response schemas."""
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-
-Role = Literal["business_owner", "developer"]
 
 # A photo from the Account page is sent as a small data URL, or a normal link.
 MAX_AVATAR_LENGTH = 400_000
@@ -28,7 +26,6 @@ class ProfileOut(BaseModel):
     id: int
     display_name: str
     avatar_url: Optional[str] = None
-    role: Role
     company_name: Optional[str] = None
     created_at: datetime
 
@@ -37,7 +34,6 @@ class ProfileUpdateIn(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     display_name: Optional[str] = Field(default=None, min_length=1, max_length=80)
-    role: Optional[Role] = None
     company_name: Optional[str] = Field(default=None, max_length=160)
     avatar_url: Optional[str] = Field(default=None, max_length=MAX_AVATAR_LENGTH)
 

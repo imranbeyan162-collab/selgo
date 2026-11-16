@@ -6,7 +6,7 @@ keeps it in the browser, and sends it on every request as the X-Client-ID
 header. This file turns that ID into a Profile:
 
 - get_profile: finds the visitor's profile, creating it on first use. Used by
-  anything that saves data (chats, likes, purchases, publishing).
+  anything that saves data (chats, likes, purchases).
 - get_optional_profile: finds the profile if it exists, never creates one.
   Used by pages anyone can read (the market), so browsing and bots don't
   fill the database with empty profiles.
@@ -113,8 +113,6 @@ def update_my_profile(
 
     if changes.get("display_name") is not None:
         profile.display_name = changes["display_name"]
-    if changes.get("role") is not None:
-        profile.role = changes["role"]
     if "company_name" in changes:
         profile.company_name = changes["company_name"] or None  # empty clears it
     if "avatar_url" in changes:

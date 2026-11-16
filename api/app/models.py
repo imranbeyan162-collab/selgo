@@ -1,8 +1,11 @@
 # api/app/models.py
 """SQLAlchemy models.
 
-Step 1 holds visitor profiles. Mentor chats, agents, reactions,
-subscriptions and payouts are added to this file in later steps.
+Step 1 holds visitor profiles. Mentor chats, agents, reactions and
+subscriptions are added to this file in later steps.
+
+Agents are published only by Selgo itself, so visitors have no roles:
+every profile is a business using Selgo.
 """
 
 from datetime import datetime
@@ -12,9 +15,6 @@ from sqlalchemy import String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .database import Base, UTCDateTime, utcnow
-
-ROLE_BUSINESS_OWNER = "business_owner"
-ROLE_DEVELOPER = "developer"
 
 
 class Profile(Base):
@@ -29,7 +29,6 @@ class Profile(Base):
     client_id_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(80), default="Guest")
     avatar_url: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    role: Mapped[str] = mapped_column(String(32), default=ROLE_BUSINESS_OWNER)
     company_name: Mapped[Optional[str]] = mapped_column(String(160), default=None)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     last_seen_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
