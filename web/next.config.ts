@@ -1,9 +1,8 @@
+// web/next.config.ts
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // Tailwind CSS is processed by its Turbopack loader (set up by create-next-app).
   turbopack: {
     rules: {
       "*.css": {
