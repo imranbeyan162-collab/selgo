@@ -4,9 +4,13 @@ AI Agents • Automated for You.
 
 ```
 selgo/
-├── api/   FastAPI backend (Python): profiles, AI Mentor, agents, workspace
-└── web/   Next.js frontend (TypeScript + Tailwind): the pages people see
+├── api/          FastAPI backend (Python): profiles, AI Mentor, market
+│   ├── agents/   every Selgo agent, defined as code (see api/agents/README.md)
+│   └── app/      the API itself
+└── web/          Next.js frontend (TypeScript + Tailwind): the pages people see
 ```
+
+To deploy an agent: add or edit its folder in `api/agents/`, commit, push.
 
 ## Run it on your PC
 

@@ -7,7 +7,7 @@ from the first message and appears under Saved chats in the drawer.
 
 import os
 from datetime import timedelta
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
@@ -24,7 +24,7 @@ from .schemas import (
     MentorChatOut,
     MessageOut,
 )
-from .session import get_profile
+from .session import get_optional_profile, get_profile
 
 router = APIRouter(prefix="/mentor", tags=["mentor"])
 
@@ -139,9 +139,13 @@ def chat(
 
 @router.get("/sessions", response_model=List[ChatSessionOut])
 def list_sessions(
-    profile: Profile = Depends(get_profile),
+    profile: Optional[Profile] = Depends(get_optional_profile),
     db: Session = Depends(get_db),
 ) -> List[ChatSession]:
+    # Someone who has never chatted has no chats, and no profile is created
+    # just because the drawer asked.
+    if profile is None:
+        return []
     return list(
         db.scalars(
             select(ChatSession)

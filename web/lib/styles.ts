@@ -12,3 +12,6 @@ export const INPUT =
   "w-full rounded-xl border border-line bg-bg px-4 py-3 text-base text-white placeholder:text-muted outline-none transition focus:border-brand";
 
 export const CARD = "rounded-2xl border border-line bg-panel";
+
+export const DANGER_BUTTON =
+  "inline-flex items-center justify-center rounded-lg border border-danger/40 px-3.5 py-2 text-sm font-medium text-danger transition hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-50";

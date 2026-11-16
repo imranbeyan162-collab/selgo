@@ -1,6 +1,6 @@
 // web/lib/image.ts
-// Turns a photo the user picked into a small square image (256 x 256 JPEG),
-// so profile photos stay light no matter how big the original was.
+// Turns a photo the user picked into a small square JPEG (256 x 256 unless a
+// size is given), so photos stay light no matter how big the original was.
 
 const AVATAR_SIZE = 256;
 
@@ -13,7 +13,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-export async function photoToAvatar(file: File): Promise<string> {
+export async function photoToAvatar(file: File, size: number = AVATAR_SIZE): Promise<string> {
   if (!file.type.startsWith("image/")) {
     throw new Error("Please choose an image file.");
   }
@@ -22,8 +22,8 @@ export async function photoToAvatar(file: File): Promise<string> {
   try {
     const image = await loadImage(url);
     const canvas = document.createElement("canvas");
-    canvas.width = AVATAR_SIZE;
-    canvas.height = AVATAR_SIZE;
+    canvas.width = size;
+    canvas.height = size;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("This browser can't process images.");
 
@@ -31,7 +31,7 @@ export async function photoToAvatar(file: File): Promise<string> {
     const side = Math.min(image.naturalWidth, image.naturalHeight);
     const sx = (image.naturalWidth - side) / 2;
     const sy = (image.naturalHeight - side) / 2;
-    context.drawImage(image, sx, sy, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+    context.drawImage(image, sx, sy, side, side, 0, 0, size, size);
 
     return canvas.toDataURL("image/jpeg", 0.85);
   } finally {

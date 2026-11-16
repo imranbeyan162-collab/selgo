@@ -1,0 +1,16 @@
+# SAMPLE AGENT for testing. The expert is made up. Delete before launch.
+
+name = "Growth Marketing Coach"
+industry = "Marketing"
+tagline = "Get more customers with proven marketing methods"
+description = """
+Ask about ads, offers, pricing and email marketing. Answers come from the
+expert's own playbook, adapted to your business.
+"""
+monthly_price = 29
+published = true
+
+[expert]
+name = "Sara Bekele"
+title = "Growth marketer (sample expert)"
+bio = "A made-up expert used to test Selgo's expert agents."

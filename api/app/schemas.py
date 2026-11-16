@@ -7,8 +7,16 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-# A photo from the Account page is sent as a small data URL, or a normal link.
+# Photos are sent as a small data URL (made in the browser), or a normal link.
 MAX_AVATAR_LENGTH = 400_000
+
+
+def _clean_image(value: Optional[str]) -> Optional[str]:
+    if value is None or value == "":
+        return None
+    if not value.startswith(("data:image/", "https://")):
+        raise ValueError("The photo must be an image file or an https link.")
+    return value
 
 
 class MessageOut(BaseModel):
@@ -41,11 +49,7 @@ class ProfileUpdateIn(BaseModel):
     @field_validator("avatar_url")
     @classmethod
     def validate_avatar(cls, value: Optional[str]) -> Optional[str]:
-        if value is None or value == "":
-            return None
-        if not value.startswith(("data:image/", "https://")):
-            raise ValueError("The photo must be an image file or an https link.")
-        return value
+        return _clean_image(value)
 
 
 # ---------- Mentor chat ----------
@@ -97,52 +101,29 @@ class ReactionType(str, Enum):
     boost = "boost"
 
 
-class AgentCreateIn(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
-
-    name: str = Field(min_length=2, max_length=120)
-    industry: str = Field(min_length=2, max_length=80)
-    tagline: str = Field(min_length=2, max_length=200)
-    description: str = Field(min_length=1, max_length=5000)
-    system_prompt: str = Field(min_length=1, max_length=20000)
-    monthly_price: float = Field(ge=0, le=100000)  # US dollars per month
-    is_published: bool = True
-
-
-class AgentUpdateIn(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
-
-    name: Optional[str] = Field(default=None, min_length=2, max_length=120)
-    industry: Optional[str] = Field(default=None, min_length=2, max_length=80)
-    tagline: Optional[str] = Field(default=None, min_length=2, max_length=200)
-    description: Optional[str] = Field(default=None, min_length=1, max_length=5000)
-    system_prompt: Optional[str] = Field(default=None, min_length=1, max_length=20000)
-    monthly_price: Optional[float] = Field(default=None, ge=0, le=100000)
-    is_published: Optional[bool] = None
-
-
 class AgentOut(BaseModel):
-    """The public marketplace card. Never includes the system prompt."""
+    """The public marketplace card. Never includes the instructions."""
 
     id: int
+    slug: str  # the agent's folder name in api/agents/
     name: str
     industry: str
     tagline: str
     description: str
     monthly_price: float
+    expert_name: Optional[str] = None
+    expert_title: Optional[str] = None
+    expert_bio: Optional[str] = None
+    # A path on this API (or an https link). The photo itself isn't in the card,
+    # which keeps the market list fast.
+    expert_photo_url: Optional[str] = None
+    knowledge_sources: int
     likes: int
     saves: int
     boosts: int
     comments: int
     my_reactions: List[ReactionType]
     created_at: datetime
-
-
-class AgentAdminOut(AgentOut):
-    """What the Selgo admin sees."""
-
-    system_prompt: str
-    is_published: bool
 
 
 class CommentIn(BaseModel):

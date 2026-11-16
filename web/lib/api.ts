@@ -83,6 +83,47 @@ export type ChatMessage = { id: number; role: ChatRole; content: string; created
 
 export type ChatSessionDetail = ChatSessionSummary & { messages: ChatMessage[] };
 
+export type ReactionType = "like" | "save" | "boost";
+
+export type AgentCard = {
+  id: number;
+  slug: string;
+  name: string;
+  industry: string;
+  tagline: string;
+  description: string;
+  monthly_price: number;
+  expert_name: string | null;
+  expert_title: string | null;
+  expert_bio: string | null;
+  expert_photo_url: string | null;
+  knowledge_sources: number;
+  likes: number;
+  saves: number;
+  boosts: number;
+  comments: number;
+  my_reactions: ReactionType[];
+  created_at: string;
+};
+
+export type ReactionResult = {
+  reaction_type: ReactionType;
+  active: boolean;
+  likes: number;
+  saves: number;
+  boosts: number;
+};
+
+export type AgentComment = {
+  id: number;
+  agent_id: number;
+  author_name: string;
+  author_avatar: string | null;
+  is_mine: boolean;
+  body: string;
+  created_at: string;
+};
+
 // ---------- Fetch wrapper ----------
 
 type RequestOptions = { method?: "GET" | "POST" | "PATCH" | "DELETE"; body?: unknown };
@@ -124,6 +165,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return (await response.json()) as T;
 }
 
+// Photos come back as paths on the API (or full https links).
+export function assetUrl(path: string | null): string | null {
+  if (!path) return null;
+  return path.startsWith("/") ? `${API_URL}${path}` : path;
+}
+
 // ---------- API calls ----------
 
 export const api = {
@@ -149,4 +196,32 @@ export const api = {
 
   deleteChatSession: (id: number) =>
     request<Message>(`/mentor/sessions/${id}`, { method: "DELETE" }),
+
+  // Agent Market
+  agents: (filters: { q?: string; industry?: string } = {}) => {
+    const params = new URLSearchParams();
+    if (filters.q) params.set("q", filters.q);
+    if (filters.industry) params.set("industry", filters.industry);
+    const query = params.toString();
+    return request<AgentCard[]>(`/agents${query ? `?${query}` : ""}`);
+  },
+
+  agentBySlug: (slug: string) => request<AgentCard>(`/agents/by-slug/${encodeURIComponent(slug)}`),
+
+  react: (agentId: number, type: ReactionType) =>
+    request<ReactionResult>(`/agents/${agentId}/reactions/${type}`, { method: "POST" }),
+
+  comments: (agentId: number) => request<AgentComment[]>(`/agents/${agentId}/comments`),
+
+  addComment: (agentId: number, body: string) =>
+    request<AgentComment>(`/agents/${agentId}/comments`, { method: "POST", body: { body } }),
+
+  deleteComment: (agentId: number, commentId: number) =>
+    request<Message>(`/agents/${agentId}/comments/${commentId}`, { method: "DELETE" }),
+
+  preview: (agentId: number, message: string, history: ChatTurn[]) =>
+    request<{ reply: string }>(`/agents/${agentId}/preview`, {
+      method: "POST",
+      body: { message, history },
+    }),
 };

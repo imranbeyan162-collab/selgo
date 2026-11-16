@@ -2,7 +2,7 @@
 """SQLAlchemy models.
 
 Visitor profiles, saved mentor chats, and Selgo's agents with their
-comments and reactions. Subscriptions are added in a later step.
+comments, reactions and knowledge library. Subscriptions come later.
 
 Agents are published only by Selgo itself, so visitors have no roles:
 every profile is a business using Selgo.
@@ -67,12 +67,15 @@ class ChatMessage(Base):
 
 
 class Agent(Base):
-    """An AI agent built and hosted by Selgo. Only the Selgo admin publishes
-    these (see require_admin in session.py)."""
+    """An AI agent built and hosted by Selgo. Agents are defined as code in
+    api/agents/<slug>/ and copied into this table by registry.py on startup.
+    Never edit these rows by hand: change the agent's folder and push."""
 
     __tablename__ = "agents"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # The agent's folder name, e.g. "growth-marketing-coach". Never changes.
+    slug: Mapped[str] = mapped_column(String(80), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(120))
     industry: Mapped[str] = mapped_column(String(80), index=True)
     tagline: Mapped[str] = mapped_column(String(200))
@@ -81,8 +84,19 @@ class Agent(Base):
     system_prompt: Mapped[str] = mapped_column(Text)
     # Money is stored in whole cents so totals never have rounding drift.
     monthly_price_cents: Mapped[int] = mapped_column(default=0)
-    # False = a draft only the admin can see.
+    # False = not shown in the market (also set when a folder is removed).
     is_published: Mapped[bool] = mapped_column(default=True)
+    # Fingerprints of the agent's files, so unchanged agents are skipped.
+    source_hash: Mapped[str] = mapped_column(String(64), default="")
+    knowledge_hash: Mapped[str] = mapped_column(String(64), default="")
+
+    # The expert whose knowledge this agent is trained on (with their
+    # permission). All four are empty for agents that aren't tied to a person.
+    expert_name: Mapped[Optional[str]] = mapped_column(String(120), default=None)
+    expert_title: Mapped[Optional[str]] = mapped_column(String(160), default=None)
+    expert_bio: Mapped[Optional[str]] = mapped_column(Text, default=None)
+    expert_photo: Mapped[Optional[str]] = mapped_column(Text, default=None)
+
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
@@ -91,6 +105,9 @@ class Agent(Base):
     )
     reactions: Mapped[List["AgentReaction"]] = relationship(
         back_populates="agent", cascade="all, delete-orphan"
+    )
+    knowledge_docs: Mapped[List["AgentKnowledge"]] = relationship(
+        back_populates="agent", cascade="all, delete-orphan", passive_deletes=True
     )
 
 
@@ -134,3 +151,42 @@ class AgentReaction(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
     agent: Mapped["Agent"] = relationship(back_populates="reactions")
+
+
+class AgentKnowledge(Base):
+    """One file from an agent's knowledge/ folder: a book chapter, course
+    notes, a transcript... These files are how an agent is "trained"."""
+
+    __tablename__ = "agent_knowledge"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agent_id: Mapped[int] = mapped_column(
+        ForeignKey("agents.id", ondelete="CASCADE"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(200))
+    char_count: Mapped[int] = mapped_column(default=0)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+    agent: Mapped["Agent"] = relationship(back_populates="knowledge_docs")
+    chunks: Mapped[List["KnowledgeChunk"]] = relationship(
+        back_populates="document", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class KnowledgeChunk(Base):
+    """A short passage of a knowledge document. When someone asks the agent a
+    question, the best-matching passages are handed to the AI with it."""
+
+    __tablename__ = "knowledge_chunks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    knowledge_id: Mapped[int] = mapped_column(
+        ForeignKey("agent_knowledge.id", ondelete="CASCADE"), index=True
+    )
+    agent_id: Mapped[int] = mapped_column(
+        ForeignKey("agents.id", ondelete="CASCADE"), index=True
+    )
+    position: Mapped[int] = mapped_column(default=0)
+    text: Mapped[str] = mapped_column(Text)
+
+    document: Mapped["AgentKnowledge"] = relationship(back_populates="chunks")

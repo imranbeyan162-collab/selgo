@@ -134,7 +134,7 @@ export function MentorChat() {
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-soft">
                 AI Agents • Automated for You
               </p>
-              <h1 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              <h1 className="mt-4 font-display text-4xl leading-tight text-white sm:text-5xl">
                 What does your business need help with?
               </h1>
               <p className="mx-auto mt-3 max-w-md text-base text-muted">

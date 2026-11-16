@@ -1,0 +1,19 @@
+# Copy this folder, rename it, and fill this in.
+# Folders starting with _ are ignored, so this template is never published.
+
+name = "Agent name"
+industry = "Industry"                 # e.g. Marketing, Retail, Real Estate
+tagline = "One line for the market card"
+description = """
+What the agent does for a business, in a few sentences.
+"""
+monthly_price = 29                    # US dollars per month, 0 for free
+published = false                     # true = visible in the Agent Market
+
+# Only for agents trained on a real person's knowledge (with their written
+# permission). Delete this whole section otherwise.
+[expert]
+name = "Expert's full name"
+title = "What they're known for"
+bio = "Two or three sentences about them."
+photo = "photo.jpg"                   # a file in this folder, under 300 KB
