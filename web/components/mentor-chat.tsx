@@ -11,8 +11,12 @@ import {
   type KeyboardEvent,
 } from "react";
 
-import { api, ApiError, CHATS_CHANGED_EVENT, type ChatTurn } from "../lib/api";
+import { api, ApiError, CHATS_CHANGED_EVENT, type AgentCard, type ChatTurn } from "../lib/api";
 import { PRIMARY_BUTTON } from "../lib/styles";
+import { AgentSuggestions } from "./agent-suggestions";
+
+// One message on screen. The mentor's answers can carry recommended agents.
+type Turn = ChatTurn & { recommendations?: AgentCard[] };
 
 const SUGGESTIONS = [
   "Which parts of my business could an AI agent take over?",
@@ -31,7 +35,7 @@ export function MentorChat() {
   const searchParams = useSearchParams();
   const requestedId = readChatId(searchParams.get("chat"));
 
-  const [messages, setMessages] = useState<ChatTurn[]>([]);
+  const [messages, setMessages] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [loadingChat, setLoadingChat] = useState(false);
@@ -57,7 +61,9 @@ export function MentorChat() {
       .then((chat) => {
         if (cancelled) return;
         sessionIdRef.current = chat.id;
-        setMessages(chat.messages.map((m) => ({ role: m.role, content: m.content })));
+        setMessages(
+          chat.messages.map((m) => ({ role: m.role, content: m.content, recommendations: m.recommendations })),
+        );
       })
       .catch(() => {
         if (cancelled) return;
@@ -84,7 +90,7 @@ export function MentorChat() {
     if (!message || sending || loadingChat) return;
 
     const before = messages;
-    const withQuestion: ChatTurn[] = [...before, { role: "user", content: message }];
+    const withQuestion: Turn[] = [...before, { role: "user", content: message }];
     setMessages(withQuestion);
     setInput("");
     setError(null);
@@ -92,7 +98,10 @@ export function MentorChat() {
 
     try {
       const result = await api.mentorChat(message, sessionIdRef.current);
-      setMessages([...withQuestion, { role: "assistant", content: result.reply }]);
+      setMessages([
+        ...withQuestion,
+        { role: "assistant", content: result.reply, recommendations: result.recommendations },
+      ]);
 
       if (result.session_id !== sessionIdRef.current) {
         // A new chat was saved: put it in the address bar and the drawer list.
@@ -156,22 +165,24 @@ export function MentorChat() {
               </div>
             </div>
           ) : (
-            messages.map((turn, index) => (
-              <div
-                key={index}
-                className={turn.role === "user" ? "flex justify-end" : "flex justify-start"}
-              >
-                <div
-                  className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
-                    turn.role === "user"
-                      ? "bg-brand text-white"
-                      : "border border-line bg-panel text-slate-100"
-                  }`}
-                >
-                  {turn.content}
+            messages.map((turn, index) =>
+              turn.role === "user" ? (
+                <div key={index} className="flex justify-end">
+                  <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl bg-brand px-4 py-3 text-[15px] leading-relaxed text-white">
+                    {turn.content}
+                  </div>
                 </div>
-              </div>
-            ))
+              ) : (
+                <div key={index} className="flex max-w-[85%] flex-col">
+                  <div className="whitespace-pre-wrap break-words rounded-2xl border border-line bg-panel px-4 py-3 text-[15px] leading-relaxed text-slate-100">
+                    {turn.content}
+                  </div>
+                  {turn.recommendations && turn.recommendations.length > 0 ? (
+                    <AgentSuggestions agents={turn.recommendations} />
+                  ) : null}
+                </div>
+              ),
+            )
           )}
 
           {loadingChat ? <p className="text-center text-sm text-muted">Opening chat…</p> : null}

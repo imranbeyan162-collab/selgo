@@ -18,8 +18,11 @@ API (terminal 1):
 
 ```powershell
 cd api
-.\venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+.\venv\Scripts\python.exe -m uvicorn app.main:app --reload --reload-include "*.toml" --reload-include "*.md" --reload-include "*.txt" --port 8000
 ```
+
+The extra `--reload-include` options make the API restart by itself when an
+agent's files in `api/agents/` change, so the agents are reloaded straight away.
 
 Web (terminal 2):
 

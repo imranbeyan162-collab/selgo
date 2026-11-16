@@ -69,6 +69,8 @@ class MentorChatOut(BaseModel):
     reply: str
     session_id: int
     title: str
+    # Agents the mentor recommends in this answer (usually none).
+    recommendations: List["AgentOut"] = Field(default_factory=list)
 
 
 class ChatSessionOut(BaseModel):
@@ -80,12 +82,11 @@ class ChatSessionOut(BaseModel):
 
 
 class ChatMessageOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: int
     role: ChatRole
     content: str
     created_at: datetime
+    recommendations: List["AgentOut"] = Field(default_factory=list)
 
 
 class ChatSessionDetailOut(ChatSessionOut):
@@ -168,3 +169,9 @@ class PreviewIn(BaseModel):
 
 class PreviewOut(BaseModel):
     reply: str
+
+
+# The chat schemas above refer to AgentOut, which is defined further down.
+MentorChatOut.model_rebuild()
+ChatMessageOut.model_rebuild()
+ChatSessionDetailOut.model_rebuild()

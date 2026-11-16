@@ -3,20 +3,31 @@
 
 Every visitor has a profile (see session.py), so every conversation is saved
 from the first message and appears under Saved chats in the drawer.
+
+The mentor is also Selgo's matchmaker. It is shown the agents published in
+the market, and once it understands the person's problem it recommends the
+best-fitting ones, whether they are trained on an expert or built by Selgo.
+It marks its picks with a hidden line like [[agents: slug-one, slug-two]];
+this file removes that line, keeps only real published agents, and sends
+them back as agent cards.
 """
 
 import os
+import re
 from datetime import timedelta
-from typing import List, Optional
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from .agents import build_cards
 from .ai import reply_or_502
 from .database import get_db, utcnow
-from .models import ChatMessage, ChatSession, Profile
+from .knowledge import rank_texts
+from .models import Agent, ChatMessage, ChatSession, Profile
 from .schemas import (
+    AgentOut,
     ChatMessageOut,
     ChatSessionDetailOut,
     ChatSessionOut,
@@ -30,18 +41,42 @@ router = APIRouter(prefix="/mentor", tags=["mentor"])
 
 # How many earlier messages the model sees. Keeps replies fast and costs low.
 MAX_HISTORY = 20
+# How many agents the mentor is shown per answer. With more agents published,
+# the ones closest to the conversation are picked.
+MAX_CATALOG = 12
+MAX_RECOMMENDATIONS = 3
 
 MENTOR_PROMPT = (
     "You are Selgo AI Mentor, a practical business mentor inside Selgo. Selgo "
-    "builds and hosts its own AI agents that businesses subscribe to so routine "
-    "work gets automated. Help the user understand their business problem, find "
-    "their biggest daily bottlenecks, suggest clear next steps, and point out "
-    "which tasks an AI agent could take over. Be concise, concrete and friendly. "
-    "Ask one short question when you need more detail. Never invent facts about "
-    "the user's business. Always reply in the same language the user writes in. "
-    "Write in plain text: no Markdown symbols such as asterisks, pound signs or "
-    "tables. For a list, put each item on its own line starting with a dash."
+    "builds and hosts AI agents that businesses subscribe to, some trained on "
+    "the knowledge of well-known experts. Help the user understand their "
+    "business problem, find their biggest daily bottlenecks, suggest clear next "
+    "steps, and point out which tasks an AI agent could take over. Be concise, "
+    "concrete and friendly. Ask one short question when you need more detail. "
+    "Never invent facts about the user's business. Always reply in the same "
+    "language the user writes in. Write in plain text: no Markdown symbols such "
+    "as asterisks, pound signs or tables. For a list, put each item on its own "
+    "line starting with a dash."
 )
+
+RECOMMEND_RULES = (
+    "Recommending agents: first make sure you understand the business and its "
+    "main problem; ask short questions until you do (usually two or three "
+    "exchanges). Then, if an agent in the list clearly fits, recommend the best "
+    "one or two (three at most). The best fit wins, whether or not it is trained "
+    "on an expert. Name each one and say in one sentence why it fits this "
+    "business. Never invent agents or recommend anything that isn't in the list. "
+    "If nothing in the list fits, say Selgo doesn't have that agent yet and "
+    "describe what kind of agent would help. Don't repeat a recommendation you "
+    "already made unless the user asks. "
+    "Whenever you recommend agents, end your reply with one last line in exactly "
+    "this form, using slugs from the list: [[agents: slug-one, slug-two]]. Never "
+    "write that line at any other time."
+)
+
+# The hidden line the mentor adds when it recommends agents.
+TAG_PATTERN = re.compile(r"`?\[\[\s*agents?\s*:\s*([^\]]*)\]\]`?", re.IGNORECASE)
+SLUG_TOKEN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 
 
 def _daily_limit() -> int:
@@ -51,6 +86,83 @@ def _daily_limit() -> int:
         return max(1, int(os.getenv("MENTOR_DAILY_LIMIT", "50")))
     except ValueError:
         return 50
+
+
+# ---------- Recommendations ----------
+
+
+def split_recommendations(text: str, allowed: Sequence[str]) -> Tuple[str, List[str]]:
+    """Takes the hidden [[agents: ...]] line out of the mentor's answer.
+    Returns the visible text and the recommended slugs that really exist."""
+    allowed_set = set(allowed)
+    slugs: List[str] = []
+    for match in TAG_PATTERN.finditer(text):
+        for token in SLUG_TOKEN.findall(match.group(1).lower()):
+            if token in allowed_set and token not in slugs:
+                slugs.append(token)
+    visible = TAG_PATTERN.sub("", text)
+    visible = re.sub(r"[ \t]+\n", "\n", visible)
+    visible = re.sub(r"\n{3,}", "\n\n", visible).strip()
+    return visible, slugs[:MAX_RECOMMENDATIONS]
+
+
+def _agent_text(agent: Agent) -> str:
+    parts = [agent.name, agent.expert_name, agent.expert_title, agent.industry, agent.tagline, agent.description]
+    return " ".join(part for part in parts if part)
+
+
+def _catalog(db: Session, conversation: str) -> List[Agent]:
+    """The published agents the mentor may recommend in this answer."""
+    agents = list(
+        db.scalars(
+            select(Agent)
+            .where(Agent.is_published.is_(True))
+            .order_by(Agent.created_at.desc(), Agent.id.desc())
+        ).all()
+    )
+    if len(agents) <= MAX_CATALOG:
+        return agents
+    best = rank_texts([_agent_text(agent) for agent in agents], conversation, MAX_CATALOG)
+    chosen = set(best)
+    order = best + [index for index in range(len(agents)) if index not in chosen]
+    return [agents[index] for index in order[:MAX_CATALOG]]
+
+
+def catalog_text(agents: Sequence[Agent]) -> str:
+    if not agents:
+        return "Selgo has no agents in its market yet, so never recommend one."
+    lines = ["Agents in the Selgo market. Recommend only from this list, using the slug:"]
+    for agent in agents:
+        if agent.expert_name:
+            who = f"trained on the work of {agent.expert_name}"
+            if agent.expert_title:
+                who += f" ({agent.expert_title})"
+        else:
+            who = "built by Selgo"
+        price = (
+            "free"
+            if agent.monthly_price_cents <= 0
+            else f"${agent.monthly_price_cents / 100:g} a month"
+        )
+        about = " ".join(agent.description.split())
+        if len(about) > 160:
+            about = about[:157].rstrip() + "..."
+        lines.append(f"- {agent.slug}: {agent.name}, {who}. {agent.industry}, {price}. {agent.tagline}. {about}")
+    return "\n".join(lines)
+
+
+def _cards_for(db: Session, slugs: Sequence[str], viewer: Optional[Profile]) -> Dict[str, AgentOut]:
+    """Market cards for the given slugs (published agents only), by slug."""
+    if not slugs:
+        return {}
+    agents = db.scalars(
+        select(Agent).where(Agent.slug.in_(list(set(slugs))), Agent.is_published.is_(True))
+    ).all()
+    return {card.slug: card for card in build_cards(db, agents, viewer)}
+
+
+def _slugs(stored: str) -> List[str]:
+    return [slug for slug in stored.split(",") if slug]
 
 
 # ---------- Helpers ----------
@@ -99,6 +211,14 @@ def _check_daily_limit(db: Session, profile: Profile) -> None:
         )
 
 
+def _history_turn(message: ChatMessage) -> Dict[str, str]:
+    content = message.content
+    # Show the mentor its own earlier picks, so it doesn't repeat them.
+    if message.role == "assistant" and message.recommendations:
+        content = f"{content}\n[[agents: {', '.join(_slugs(message.recommendations))}]]"
+    return {"role": message.role, "content": content}
+
+
 # ---------- Chat ----------
 
 
@@ -109,16 +229,23 @@ def chat(
     db: Session = Depends(get_db),
 ) -> MentorChatOut:
     session = None
-    history = []
+    earlier: List[ChatMessage] = []
     if payload.session_id is not None:
         session = _get_session_or_404(db, payload.session_id, profile)
         earlier = _load_messages(db, session.id)[-MAX_HISTORY:]
-        history = [{"role": m.role, "content": m.content} for m in earlier]
+    history = [_history_turn(message) for message in earlier]
 
     _check_daily_limit(db, profile)
 
+    said_by_user = " ".join(m.content for m in earlier if m.role == "user")
+    catalog = _catalog(db, f"{said_by_user} {payload.message}")
+    instructions = "\n\n".join([MENTOR_PROMPT, RECOMMEND_RULES, catalog_text(catalog)])
+
     # Ask first, save second: a failed AI call never leaves a half-saved chat.
-    reply = reply_or_502(MENTOR_PROMPT, history, payload.message)
+    answer = reply_or_502(instructions, history, payload.message)
+    reply, picked = split_recommendations(answer, [agent.slug for agent in catalog])
+    if not reply:
+        reply = "These agents fit what you described:" if picked else "Could you tell me a bit more?"
 
     if session is None:
         session = ChatSession(profile_id=profile.id, title=_title_from(payload.message))
@@ -127,11 +254,24 @@ def chat(
 
     db.add(ChatMessage(session_id=session.id, role="user", content=payload.message))
     db.flush()  # the question always gets the lower id, so order is stable
-    db.add(ChatMessage(session_id=session.id, role="assistant", content=reply))
+    db.add(
+        ChatMessage(
+            session_id=session.id,
+            role="assistant",
+            content=reply,
+            recommendations=",".join(picked),
+        )
+    )
     session.updated_at = utcnow()
     db.commit()
 
-    return MentorChatOut(reply=reply, session_id=session.id, title=session.title)
+    cards = _cards_for(db, picked, profile)
+    return MentorChatOut(
+        reply=reply,
+        session_id=session.id,
+        title=session.title,
+        recommendations=[cards[slug] for slug in picked if slug in cards],
+    )
 
 
 # ---------- Saved chats ----------
@@ -163,11 +303,24 @@ def read_session(
 ) -> ChatSessionDetailOut:
     session = _get_session_or_404(db, session_id, profile)
     messages = _load_messages(db, session.id)
+    all_slugs = [slug for message in messages for slug in _slugs(message.recommendations)]
+    cards = _cards_for(db, all_slugs, profile)
     return ChatSessionDetailOut(
         id=session.id,
         title=session.title,
         updated_at=session.updated_at,
-        messages=[ChatMessageOut.model_validate(message) for message in messages],
+        messages=[
+            ChatMessageOut(
+                id=message.id,
+                role=message.role,
+                content=message.content,
+                created_at=message.created_at,
+                recommendations=[
+                    cards[slug] for slug in _slugs(message.recommendations) if slug in cards
+                ],
+            )
+            for message in messages
+        ],
     )
 
 

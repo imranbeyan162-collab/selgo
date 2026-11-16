@@ -2,7 +2,9 @@
 
 Every agent Selgo offers is a folder in here. To deploy an agent, add or edit
 its folder, then commit and push. The API loads the folders every time it
-starts, so the change goes live with the next deploy. Locally, restart the API.
+starts, so the change goes live with the next deploy. Locally, the API
+restarts by itself when agent files change (see the run command in the main
+README).
 
 ```
 api/agents/
@@ -52,5 +54,5 @@ there is one, stays as it was.
 - **Keep the GitHub repo private.** Agent instructions and expert knowledge
   are your product. In a public repo, anyone can read them.
 - **Encoding**: save every file as UTF-8, which is VS Code's default.
-- **Samples**: `growth-marketing-coach` and `customer-follow-up-assistant`
-  are made-up samples for testing. Delete them before launch.
+- **Sample**: `growth-marketing-coach` is a made-up sample for testing.
+  Delete it before launch.

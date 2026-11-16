@@ -86,7 +86,7 @@ def _reaction_totals(db: Session, agent_ids: List[int]) -> Dict[int, Dict[str, i
     return totals
 
 
-def _build_cards(
+def build_cards(
     db: Session, agents: Sequence[Agent], viewer: Optional[Profile]
 ) -> List[AgentOut]:
     """Turns Agent rows into market cards with counts and the viewer's own
@@ -187,7 +187,7 @@ def list_agents(
         )
 
     agents = db.scalars(stmt.order_by(Agent.created_at.desc(), Agent.id.desc())).all()
-    return _build_cards(db, agents, viewer)
+    return build_cards(db, agents, viewer)
 
 
 # Must stay above the "/{agent_id}/..." routes.
@@ -200,7 +200,7 @@ def read_agent_by_slug(
     agent = db.scalar(select(Agent).where(Agent.slug == slug, Agent.is_published.is_(True)))
     if agent is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found.")
-    return _build_cards(db, [agent], viewer)[0]
+    return build_cards(db, [agent], viewer)[0]
 
 
 @router.get("/{agent_id}/photo", include_in_schema=False)
@@ -230,7 +230,7 @@ def read_agent(
     db: Session = Depends(get_db),
 ) -> AgentOut:
     agent = _get_agent_or_404(db, agent_id)
-    return _build_cards(db, [agent], viewer)[0]
+    return build_cards(db, [agent], viewer)[0]
 
 
 # ---------- Comments ----------

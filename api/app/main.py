@@ -2,7 +2,8 @@
 """Selgo API entry point.
 
 Run from the api/ folder:
-    venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
+    venv/Scripts/python.exe -m uvicorn app.main:app --reload --reload-include "*.toml"
+        --reload-include "*.md" --reload-include "*.txt" --port 8000
 """
 
 import logging
@@ -27,7 +28,7 @@ logger = logging.getLogger("uvicorn.error")
 
 # Which update this code came from. /health shows it, so you can always check
 # that the server is really running the latest code you unpacked.
-BUILD = "selgo-rebuild-11"
+BUILD = "selgo-rebuild-12"
 
 # Create any missing tables. Existing tables and their data are left untouched.
 Base.metadata.create_all(bind=engine)

@@ -61,6 +61,8 @@ class ChatMessage(Base):
     )
     role: Mapped[str] = mapped_column(String(16))  # "user" or "assistant"
     content: Mapped[str] = mapped_column(Text)
+    # Slugs of the agents the mentor recommended in this answer, comma-separated.
+    recommendations: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
     session: Mapped["ChatSession"] = relationship(back_populates="messages")

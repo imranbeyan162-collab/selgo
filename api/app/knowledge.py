@@ -102,13 +102,14 @@ def _words(text: str) -> List[str]:
     ]
 
 
-def best_passages(passages: Sequence[str], question: str, limit: int = TOP_PASSAGES) -> List[str]:
-    """Ranks passages against the question with BM25 and returns the best."""
+def rank_texts(texts: Sequence[str], question: str, limit: int) -> List[int]:
+    """Ranks texts against the question with BM25. Returns the positions of
+    the best matches, best first. Texts with nothing in common are left out."""
     query = set(_words(question))
-    if not query or not passages:
+    if not query or not texts:
         return []
 
-    docs = [Counter(_words(passage)) for passage in passages]
+    docs = [Counter(_words(text)) for text in texts]
     lengths = [sum(doc.values()) for doc in docs]
     average = (sum(lengths) / len(lengths)) or 1.0
     total = len(docs)
@@ -132,7 +133,12 @@ def best_passages(passages: Sequence[str], question: str, limit: int = TOP_PASSA
             scored.append((score, index))
 
     scored.sort(key=lambda item: (-item[0], item[1]))
-    return [passages[index] for _, index in scored[:limit]]
+    return [index for _, index in scored[:limit]]
+
+
+def best_passages(passages: Sequence[str], question: str, limit: int = TOP_PASSAGES) -> List[str]:
+    """The passages that best match the question, best first."""
+    return [passages[index] for index in rank_texts(passages, question, limit)]
 
 
 def find_passages(db: Session, agent_id: int, question: str) -> List[str]:

@@ -75,11 +75,22 @@ export type ChatRole = "user" | "assistant";
 
 export type ChatTurn = { role: ChatRole; content: string };
 
-export type MentorReply = { reply: string; session_id: number; title: string };
+export type MentorReply = {
+  reply: string;
+  session_id: number;
+  title: string;
+  recommendations: AgentCard[]; // agents the mentor suggests in this answer
+};
 
 export type ChatSessionSummary = { id: number; title: string; updated_at: string };
 
-export type ChatMessage = { id: number; role: ChatRole; content: string; created_at: string };
+export type ChatMessage = {
+  id: number;
+  role: ChatRole;
+  content: string;
+  created_at: string;
+  recommendations: AgentCard[];
+};
 
 export type ChatSessionDetail = ChatSessionSummary & { messages: ChatMessage[] };
 
