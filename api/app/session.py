@@ -10,9 +10,13 @@ header. This file turns that ID into a Profile:
 - get_optional_profile: finds the profile if it exists, never creates one.
   Used by pages anyone can read (the market), so browsing and bots don't
   fill the database with empty profiles.
+- require_admin: lets only the Selgo admin through (publishing agents). The
+  admin sends the secret ADMIN_KEY from api/.env as the X-Admin-Key header.
 """
 
 import hashlib
+import hmac
+import os
 import re
 from typing import Optional
 
@@ -93,6 +97,20 @@ def get_profile(
         if profile is None:
             raise
     return profile
+
+
+def require_admin(x_admin_key: Optional[str] = Header(default=None)) -> None:
+    expected = os.getenv("ADMIN_KEY", "").strip()
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Admin is not set up. Add ADMIN_KEY to api/.env and restart.",
+        )
+    given = (x_admin_key or "").strip()
+    # compare_digest takes the same time whether the key is close or not,
+    # so the key can't be guessed one character at a time.
+    if not hmac.compare_digest(given.encode("utf-8"), expected.encode("utf-8")):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only.")
 
 
 # ---------- Routes ----------

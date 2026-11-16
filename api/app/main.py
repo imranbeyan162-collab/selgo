@@ -2,7 +2,7 @@
 """Selgo API entry point.
 
 Run from the api/ folder:
-    ../venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
+    venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
 """
 
 import os
@@ -14,6 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from . import models  # noqa: F401  (registers every table on Base.metadata)
+from .agents import router as agents_router
 from .database import Base, engine, get_db
 from .mentor import router as mentor_router
 from .session import router as profile_router
@@ -43,6 +44,7 @@ app.add_middleware(
 
 app.include_router(profile_router)
 app.include_router(mentor_router)
+app.include_router(agents_router)
 
 
 @app.get("/", tags=["system"])

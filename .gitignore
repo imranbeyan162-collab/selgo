@@ -1,9 +1,20 @@
+# Secrets (the example file is safe to share and is kept)
 .env
 .env.*
-selgo.db
+!.env.example
+
+# Local databases
 *.db
+
+# Python
 venv/
 __pycache__/
+*.pyc
+
+# Node / Next.js
 node_modules/
 .next/
+*.tsbuildinfo
+
+# Vercel
 .vercel/
