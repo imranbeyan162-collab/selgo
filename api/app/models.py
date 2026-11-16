@@ -1,7 +1,7 @@
 # api/app/models.py
 """SQLAlchemy models.
 
-Step 1 holds visitor profiles. Mentor chats, agents, reactions and
+Visitor profiles and saved mentor chats. Agents, reactions and
 subscriptions are added to this file in later steps.
 
 Agents are published only by Selgo itself, so visitors have no roles:
@@ -9,10 +9,10 @@ every profile is a business using Selgo.
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
-from sqlalchemy import String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base, UTCDateTime, utcnow
 
@@ -32,3 +32,35 @@ class Profile(Base):
     company_name: Mapped[Optional[str]] = mapped_column(String(160), default=None)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     last_seen_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+
+class ChatSession(Base):
+    """One saved mentor conversation. Shown under Saved chats in the drawer."""
+
+    __tablename__ = "chat_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profile_id: Mapped[int] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(120))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+    messages: Mapped[List["ChatMessage"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("chat_sessions.id", ondelete="CASCADE"), index=True
+    )
+    role: Mapped[str] = mapped_column(String(16))  # "user" or "assistant"
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+
+    session: Mapped["ChatSession"] = relationship(back_populates="messages")

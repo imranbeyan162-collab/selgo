@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from . import models  # noqa: F401  (registers every table on Base.metadata)
 from .database import Base, engine, get_db
+from .mentor import router as mentor_router
 from .session import router as profile_router
 
 # Create any missing tables. Existing tables and their data are left untouched.
@@ -41,6 +42,7 @@ app.add_middleware(
 )
 
 app.include_router(profile_router)
+app.include_router(mentor_router)
 
 
 @app.get("/", tags=["system"])

@@ -2,7 +2,7 @@
 """Pydantic v2 request and response schemas."""
 
 from datetime import datetime
-from typing import Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -45,3 +45,43 @@ class ProfileUpdateIn(BaseModel):
         if not value.startswith(("data:image/", "https://")):
             raise ValueError("The photo must be an image file or an https link.")
         return value
+
+
+# ---------- Mentor chat ----------
+
+ChatRole = Literal["user", "assistant"]
+
+
+class MentorChatIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    message: str = Field(min_length=1, max_length=4000)
+    # The saved chat to continue. Leave empty to start a new chat.
+    session_id: Optional[int] = None
+
+
+class MentorChatOut(BaseModel):
+    reply: str
+    session_id: int
+    title: str
+
+
+class ChatSessionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    updated_at: datetime
+
+
+class ChatMessageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    role: ChatRole
+    content: str
+    created_at: datetime
+
+
+class ChatSessionDetailOut(ChatSessionOut):
+    messages: List[ChatMessageOut]
