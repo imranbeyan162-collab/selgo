@@ -142,6 +142,41 @@ export type Subscription = {
 
 export type WorkspaceMessage = { id: number; role: ChatRole; content: string; created_at: string };
 
+export type TrackerWeek = { week_start: string; tasks: number; average_score: number | null };
+
+export type TrackerFinding = {
+  task_id: number;
+  created_at: string;
+  topic: string;
+  score: number | null;
+  verdict: "good" | "needs_work" | "problem";
+  feedback: string;
+  question: string;
+  answer: string;
+  owner_pushback: boolean;
+};
+
+export type TrackerReport = {
+  period_days: number;
+  tasks_handled: number;
+  failed: number;
+  reviewed: number;
+  pending_reviews: number;
+  average_score: number | null;
+  good: number;
+  needs_work: number;
+  problem: number;
+  answered_rate: number | null;
+  instructions_rate: number | null;
+  average_response_seconds: number | null;
+  hours_saved: number | null;
+  owner_pushbacks: number;
+  weeks: TrackerWeek[];
+  findings: TrackerFinding[];
+  reviewer: string;
+  last_reviewed_at: string | null;
+};
+
 export type AgentComment = {
   id: number;
   agent_id: number;
@@ -268,6 +303,12 @@ export const api = {
     request<Message>(`/workspace/subscriptions/${id}`, { method: "DELETE" }),
 
   workspaceMessages: (id: number) => request<WorkspaceMessage[]>(`/workspace/subscriptions/${id}/messages`),
+
+  report: (id: number) => request<TrackerReport>(`/workspace/subscriptions/${id}/report`),
+
+  // Reviews a few waiting tasks first, then returns the updated report.
+  refreshReport: (id: number) =>
+    request<TrackerReport>(`/workspace/subscriptions/${id}/report/refresh`, { method: "POST" }),
 
   workspaceChat: (id: number, message: string) =>
     request<{ question: WorkspaceMessage; reply: WorkspaceMessage }>(`/workspace/subscriptions/${id}/chat`, {

@@ -13,7 +13,7 @@ import logging
 import os
 import urllib.error
 import urllib.request
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from fastapi import HTTPException, status
 
@@ -41,17 +41,28 @@ def _demo_reply(message: str) -> str:
     )
 
 
-def generate_reply(system_prompt: str, history: List[Dict[str, str]], message: str) -> str:
+def main_model() -> str:
+    """The model that powers the mentor and the agents."""
+    return os.getenv("GROQ_MODEL", "").strip() or DEFAULT_MODEL
+
+
+def generate_reply(
+    system_prompt: str,
+    history: List[Dict[str, str]],
+    message: str,
+    model: Optional[str] = None,
+) -> str:
     """Sends the conversation to the model and returns its reply as plain text.
 
     history is a list of {"role": "user" | "assistant", "content": "..."} in
     the order the messages were sent, not including the new message.
+    model defaults to the main model; the tracker passes its reviewer model.
     """
     api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not api_key:
         return _demo_reply(message)
 
-    model = os.getenv("GROQ_MODEL", "").strip() or DEFAULT_MODEL
+    model = model or main_model()
 
     messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
     for turn in history:

@@ -2,8 +2,9 @@
 """SQLAlchemy models.
 
 Visitor profiles, saved mentor chats, Selgo's agents with their comments,
-reactions and knowledge library, and subscriptions: each business's own
-private copy of an agent, with its settings and conversation memory.
+reactions and knowledge library, subscriptions (each business's own private
+copy of an agent, with its settings and conversation memory), and the
+tracker's record of every task those agents do.
 
 Agents are published only by Selgo itself, so visitors have no roles:
 every profile is a business using Selgo.
@@ -246,3 +247,48 @@ class WorkspaceMessage(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
 
     subscription: Mapped["Subscription"] = relationship(back_populates="messages")
+
+
+class AgentTask(Base):
+    """One piece of work a business's agent did: a message from the owner and
+    the agent's answer. The tracker measures every task and reviews a sample
+    of them (see monitor.py). Only the subscription's owner sees these."""
+
+    __tablename__ = "agent_tasks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    subscription_id: Mapped[int] = mapped_column(
+        ForeignKey("subscriptions.id", ondelete="CASCADE"), index=True
+    )
+    # Empty when the AI failed to answer (nothing was saved to the conversation).
+    question_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("workspace_messages.id", ondelete="CASCADE"), default=None
+    )
+    answer_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("workspace_messages.id", ondelete="CASCADE"), default=None
+    )
+    succeeded: Mapped[bool] = mapped_column(default=True)
+    latency_ms: Mapped[int] = mapped_column(default=0)
+    # The owner's next message pushed back on this answer ("that's wrong"...).
+    owner_pushback: Mapped[bool] = mapped_column(default=False)
+
+    # Review: "skipped", "pending", "reviewing", "done" or "failed".
+    review_status: Mapped[str] = mapped_column(String(16), default="skipped", index=True)
+    # Why it was picked for review: "first", "random", "flagged" or "pushback".
+    sample_reason: Mapped[str] = mapped_column(String(16), default="")
+    claimed_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime, default=None)
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime, default=None)
+    reviewer_model: Mapped[str] = mapped_column(String(80), default="")
+
+    # What the reviewer found.
+    topic: Mapped[str] = mapped_column(String(160), default="")
+    score: Mapped[Optional[int]] = mapped_column(default=None)  # 0-100
+    verdict: Mapped[str] = mapped_column(String(16), default="")  # good, needs_work, problem
+    answered: Mapped[Optional[bool]] = mapped_column(default=None)
+    followed_instructions: Mapped[Optional[bool]] = mapped_column(default=None)
+    used_knowledge: Mapped[Optional[bool]] = mapped_column(default=None)
+    minutes_saved: Mapped[Optional[int]] = mapped_column(default=None)
+    feedback: Mapped[str] = mapped_column(Text, default="")
+
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, index=True)
+

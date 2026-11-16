@@ -219,6 +219,50 @@ class WorkspaceChatOut(BaseModel):
     reply: WorkspaceMessageOut
     question: WorkspaceMessageOut
 
+
+# ---------- Tracker (performance report) ----------
+
+
+class TrackerWeek(BaseModel):
+    week_start: datetime
+    tasks: int
+    average_score: Optional[int] = None
+
+
+class TrackerFinding(BaseModel):
+    """A reviewed task the owner should look at."""
+
+    task_id: int
+    created_at: datetime
+    topic: str
+    score: Optional[int] = None
+    verdict: str
+    feedback: str
+    question: str
+    answer: str
+    owner_pushback: bool
+
+
+class TrackerReport(BaseModel):
+    period_days: int
+    tasks_handled: int
+    failed: int
+    reviewed: int
+    pending_reviews: int
+    average_score: Optional[int] = None
+    good: int
+    needs_work: int
+    problem: int
+    answered_rate: Optional[int] = None  # percent of reviewed tasks that dealt with the request
+    instructions_rate: Optional[int] = None  # percent that followed the owner's instructions
+    average_response_seconds: Optional[float] = None
+    hours_saved: Optional[float] = None  # estimate, from the reviewer's per-task estimates
+    owner_pushbacks: int
+    weeks: List[TrackerWeek]
+    findings: List[TrackerFinding]
+    reviewer: str
+    last_reviewed_at: Optional[datetime] = None
+
 # The chat schemas above refer to AgentOut, which is defined further down.
 MentorChatOut.model_rebuild()
 ChatMessageOut.model_rebuild()

@@ -9,16 +9,27 @@ import { api, ApiError, type Subscription } from "../lib/api";
 import { formatPrice, formatStatus } from "../lib/format";
 import { DANGER_BUTTON } from "../lib/styles";
 import { AgentPortrait } from "./agent-portrait";
+import { AgentReport } from "./agent-report";
 import { AgentSettings } from "./agent-settings";
 import { WorkspaceChat } from "./workspace-chat";
 
-// One of my business agents: work with it, customize it, or cancel.
+const TABS = [
+  { id: "work", label: "Work with it" },
+  { id: "performance", label: "Performance" },
+  { id: "customize", label: "Customize" },
+] as const;
+
+type Tab = (typeof TABS)[number]["id"];
+
+// One of my business agents: work with it, see how it's performing,
+// customize it, or cancel.
 export function BusinessAgent() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [sub, setSub] = useState<Subscription | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [tab, setTab] = useState<Tab>("work");
 
   useEffect(() => {
     let cancelled = false;
@@ -92,9 +103,34 @@ export function BusinessAgent() {
         </div>
       </header>
 
-      <WorkspaceChat sub={sub} />
+      <div className="flex flex-col gap-5">
+        <div role="tablist" aria-label="Agent sections" className="flex gap-1 border-b border-line">
+          {TABS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              id={`tab-${item.id}`}
+              aria-selected={tab === item.id}
+              aria-controls={`panel-${item.id}`}
+              onClick={() => setTab(item.id)}
+              className={`-mb-px border-b-2 px-3 py-2.5 text-sm transition focus-visible:outline-2 focus-visible:outline-brand ${
+                tab === item.id
+                  ? "border-brand font-semibold text-white"
+                  : "border-transparent text-muted hover:text-slate-200"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
 
-      <AgentSettings sub={sub} onSaved={setSub} />
+        <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+          {tab === "work" ? <WorkspaceChat sub={sub} /> : null}
+          {tab === "performance" ? <AgentReport sub={sub} /> : null}
+          {tab === "customize" ? <AgentSettings sub={sub} onSaved={setSub} /> : null}
+        </div>
+      </div>
 
       <div className="flex flex-col gap-3 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
         <Link href={`/market/${sub.agent.slug}`} className="text-sm text-brand-soft hover:underline">

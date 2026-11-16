@@ -9,14 +9,17 @@
   simply active.
 - Cancelling keeps the conversation and settings, so subscribing again picks
   up where they left off. It never restarts the free trial.
+- Every exchange is logged for the tracker (monitor.py), and the owner can
+  see their agent's performance report here.
 """
 
 import math
 import os
+import time
 from datetime import timedelta
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -26,11 +29,13 @@ from .ai import reply_or_502
 from .database import get_db, utcnow
 from .knowledge import agent_instructions, find_passages
 from .models import Agent, Profile, Subscription, WorkspaceMessage
+from .monitor import build_report, log_failure, log_task, note_pushback, process_pending, review_soon
 from .schemas import (
     MessageOut,
     SubscribeIn,
     SubscriptionOut,
     SubscriptionSettingsIn,
+    TrackerReport,
     WorkspaceChatIn,
     WorkspaceChatOut,
     WorkspaceMessageOut,
@@ -279,6 +284,7 @@ def _check_daily_limit(db: Session, profile: Profile) -> None:
 def chat_with_agent(
     subscription_id: int,
     payload: WorkspaceChatIn,
+    background: BackgroundTasks,
     profile: Profile = Depends(get_profile),
     db: Session = Depends(get_db),
 ) -> WorkspaceChatOut:
@@ -310,18 +316,57 @@ def chat_with_agent(
         find_passages(db, agent.id, payload.message),
         extra=owner_instructions(sub, profile.company_name),
     )
+    # The tracker notes when this message pushes back on the last answer.
+    note_pushback(db, sub, payload.message)
+
     # Ask first, save second: a failed AI call never leaves a half-saved exchange.
-    reply = reply_or_502(instructions, history, payload.message)
+    started = time.monotonic()
+    try:
+        reply = reply_or_502(instructions, history, payload.message)
+    except HTTPException:
+        log_failure(db, sub, int((time.monotonic() - started) * 1000))
+        raise
+    latency_ms = int((time.monotonic() - started) * 1000)
 
     question = WorkspaceMessage(subscription_id=sub.id, role="user", content=payload.message)
     db.add(question)
     db.flush()  # the question always gets the lower id, so order is stable
     answer = WorkspaceMessage(subscription_id=sub.id, role="assistant", content=reply)
     db.add(answer)
+    db.flush()  # assigns answer.id for the task log
+    task = log_task(db, sub, question, answer, latency_ms)
     sub.updated_at = utcnow()
     db.commit()
+
+    if task.review_status == "pending":
+        background.add_task(review_soon, task.id)  # runs after the answer is sent
 
     return WorkspaceChatOut(
         question=WorkspaceMessageOut.model_validate(question),
         reply=WorkspaceMessageOut.model_validate(answer),
     )
+
+
+# ---------- Performance report (the tracker) ----------
+
+
+@router.get("/subscriptions/{subscription_id}/report", response_model=TrackerReport)
+def read_report(
+    subscription_id: int,
+    profile: Profile = Depends(get_profile),
+    db: Session = Depends(get_db),
+) -> TrackerReport:
+    return build_report(db, _own_subscription(db, subscription_id, profile))
+
+
+@router.post("/subscriptions/{subscription_id}/report/refresh", response_model=TrackerReport)
+def refresh_report(
+    subscription_id: int,
+    profile: Profile = Depends(get_profile),
+    db: Session = Depends(get_db),
+) -> TrackerReport:
+    """Reviews a few waiting tasks for this agent, then returns the report."""
+    sub = _own_subscription(db, subscription_id, profile)
+    process_pending(db, sub.id, limit=3)
+    return build_report(db, sub)
+
